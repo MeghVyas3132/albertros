@@ -1,0 +1,18 @@
+{
+  "name": "checkout-service",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.21.2",
+    "lodahs": "*",
+    "crossenv": "^6.1.1",
+    "event-stream": "3.3.6",
+    "colors": "1.4.44-liberty-2",
+    "node-ipc": "10.1.1",
+    "acme-internal-auth": "^1.2.0",
+    "jsonwebtoken": "8.5.1",
+    "electorn": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

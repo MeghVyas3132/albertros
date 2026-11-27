@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Albertros · npm supply-chain checker</title>
+    <meta name="description" content="Know which npm dependency will hurt you, before npm install does. Checks takedowns, malware databases, release history and the code itself, in your browser." />
+    <meta property="og:title" content="Albertros · npm supply-chain checker" />
+    <meta property="og:description" content="Know which npm dependency will hurt you, before npm install does." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2316161a'/%3E%3Cpath d='M5 18c5-1 8-5 11-9 3 4 6 8 11 9-4 1-7 0-11-3-4 3-7 4-11 3z' fill='%23f4f1ea'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="./">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" /><path d="M5 18c5-1 8-5 11-9 3 4 6 8 11 9-4 1-7 0-11-3-4 3-7 4-11 3z" /></svg>
+        <span>Albertros</span>
+      </a>
+      <nav>
+        <a href="#how">How it works</a>
+        <a href="#ci">CLI &amp; CI</a>
+        <a href="https://github.com/MeghVyas3132/albertros" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">npm supply-chain checker</p>
+        <h1>Know which dependency will hurt you, <em>before</em> <code>npm install</code> does.</h1>
+        <p class="lede">
+          Albertros checks every package against npm's own takedowns, the OSV malware database, the signals of a hijacked release, and the published code itself.
+          It runs in your browser and uploads nothing.
+        </p>
+      </section>
+
+      <section class="card input" aria-label="What to check">
+        <div class="tabs" role="tablist">
+          <button role="tab" data-tab="repo" aria-selected="true">GitHub repo</button>
+          <button role="tab" data-tab="paste" aria-selected="false">Paste package.json or lockfile</button>
+          <button role="tab" data-tab="list" aria-selected="false">Packages</button>
+        </div>
+        <form id="form" autocomplete="off">
+          <div class="pane" data-pane="repo">
+            <input id="repo" type="text" placeholder="owner/repo or https://github.com/owner/repo" spellcheck="false" />
+          </div>
+          <div class="pane" data-pane="paste" hidden>
+            <textarea id="paste" rows="8" placeholder='{ "dependencies": { "express": "^4.21.2" } }' spellcheck="false"></textarea>
+          </div>
+          <div class="pane" data-pane="list" hidden>
+            <input id="list" type="text" placeholder="chalk@5.6.1 lodash express@4" spellcheck="false" />
+          </div>
+          <div class="row">
+            <label class="check"><input type="checkbox" id="dev" checked /> Include devDependencies</label>
+            <label class="check"><input type="checkbox" id="deep" /> Scan the code of every package</label>
+            <button type="submit" class="go" id="go">Check</button>
+          </div>
+        </form>
+        <div class="examples">
+          <span>Try:</span>
+          <button data-example="risky">A risky project</button>
+          <button data-example="hijack">The Sept 2025 chalk/debug hijack</button>
+          <button data-example="express">expressjs/express</button>
+        </div>
+      </section>
+
+      <section id="progress" class="progress" hidden>
+        <div class="bar"><i></i></div>
+        <p id="stage">Starting…</p>
+      </section>
+
+      <p id="error" class="error" hidden></p>
+
+      <section id="results" hidden>
+        <div class="summary card">
+          <div class="score" id="score"></div>
+          <div class="sumtext">
+            <p class="source" id="source"></p>
+            <h2 id="headline"></h2>
+            <div class="counts" id="counts"></div>
+          </div>
+          <div class="actions">
+            <button id="share">Copy share link</button>
+            <button id="download">Download JSON</button>
+          </div>
+        </div>
+        <div class="filters">
+          <div class="seg" id="filters"></div>
+          <input id="search" type="search" placeholder="Filter packages" />
+        </div>
+        <ul class="list" id="list-out"></ul>
+      </section>
+
+      <section id="how" class="how">
+        <h2>Four checks, one verdict</h2>
+        <p class="sub">Every package gets <b class="t-danger">Danger</b>, <b class="t-review">Review</b> or <b class="t-safe">Safe</b>, with the reason in plain language.</p>
+        <div class="grid">
+          <article>
+            <span class="n">01</span>
+            <h3>Takedowns and missing names</h3>
+            <p>Names npm replaced with a security placeholder, versions pulled from the registry, and private-looking names that don't exist on npm, which anyone could register (dependency confusion).</p>
+          </article>
+          <article>
+            <span class="n">02</span>
+            <h3>Known malware and vulnerabilities</h3>
+            <p>Every exact version is matched against <a href="https://osv.dev" target="_blank" rel="noopener">OSV</a>, which includes the OpenSSF malicious-packages feed and GitHub advisories.</p>
+          </article>
+          <article>
+            <span class="n">03</span>
+            <h3>Signs of a hijacked release</h3>
+            <p>A first release by a new account, an install script that wasn't there before, CI provenance that suddenly stops, a sudden size jump, or a release only hours old. The chalk/debug and Shai-Hulud attacks set off several of these at once.</p>
+          </article>
+          <article>
+            <span class="n">04</span>
+            <h3>The code itself</h3>
+            <p>Downloads the published tarball and looks for what real attacks do: scripts that run on install and reach the internet, hidden <code>eval</code>, token and SSH-key theft, wallet hijacking, obfuscation.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="ci" class="ci">
+        <div>
+          <h2>Same engine in your terminal and CI</h2>
+          <p class="sub">Fails the build when a dependency is dangerous. Exit code 1 on danger, 0 when clean.</p>
+        </div>
+        <div class="code">
+          <div class="codehead"><span>Terminal</span><button data-copy="cli">Copy</button></div>
+          <pre id="cli">npx github:MeghVyas3132/albertros check</pre>
+          <div class="codehead"><span>.github/workflows/deps.yml</span><button data-copy="gha">Copy</button></div>
+          <pre id="gha">name: dependency check
+on: [pull_request]
+jobs:
+  albertros:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: MeghVyas3132/albertros@main</pre>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Albertros · MIT · data from the npm registry, npm downloads API and OSV.dev</span>
+      <span>Built at CODEFESTTHON 2026</span>
+    </footer>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

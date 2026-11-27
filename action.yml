@@ -1,0 +1,44 @@
+name: Albertros dependency check
+description: Fail the build when an npm dependency is malicious, hijacked, typosquatted or missing from npm.
+author: Megh Vyas
+branding:
+  icon: shield
+  color: red
+inputs:
+  path:
+    description: Directory or file to check (package-lock.json is preferred over package.json)
+    default: '.'
+  fail-on:
+    description: danger, review or never
+    default: danger
+  deep:
+    description: Scan the code of every package, not only suspicious ones
+    default: 'false'
+  sarif:
+    description: Where to write SARIF for GitHub code scanning (empty to skip)
+    default: albertros.sarif
+outputs:
+  sarif:
+    description: Path of the SARIF file
+    value: ${{ inputs.sarif }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Build Albertros
+      shell: bash
+      run: cd "$GITHUB_ACTION_PATH" && npm ci --ignore-scripts --no-audit --no-fund && npx tsc -p tsconfig.json
+    - name: Check dependencies
+      shell: bash
+      env:
+        IN_PATH: ${{ inputs.path }}
+        IN_FAIL: ${{ inputs.fail-on }}
+        IN_DEEP: ${{ inputs.deep }}
+        IN_SARIF: ${{ inputs.sarif }}
+      run: |
+        args=(check "$IN_PATH" --fail-on "$IN_FAIL" --markdown "$GITHUB_STEP_SUMMARY")
+        [ "$IN_DEEP" = "true" ] && args+=(--deep)
+        [ -n "$IN_SARIF" ] && args+=(--sarif "$IN_SARIF")
+        node "$GITHUB_ACTION_PATH/dist/cli.js" "${args[@]}"

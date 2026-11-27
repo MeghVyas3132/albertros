@@ -1,0 +1,7 @@
+{
+  "failOn": "danger",
+  "includeDev": true,
+  "deep": false,
+  "allow": ["some-internal-tool", "legacy-lib@1.2.3"],
+  "ignoreFindings": ["osv-vuln"]
+}
