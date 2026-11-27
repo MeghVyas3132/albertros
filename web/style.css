@@ -227,7 +227,7 @@ footer { max-width: 1080px; margin: 0 auto; padding: 28px 24px 40px; display: fl
 .pain { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0 0 28px; }
 .pain article { border-left: 2px solid var(--danger); padding: 4px 0 4px 16px; }
 .pain time { font: 500 12px var(--mono); color: var(--danger); }
-.pain h3 { margin: 4px 0 4px; font-size: 16px; letter-spacing: -0.01em; }
+.pain h2 { margin: 4px 0 4px; font-size: 16px; letter-spacing: -0.01em; line-height: 1.35; }
 .pain p { margin: 0; font-size: 14px; color: var(--ink-2); }
 .examples button.hot { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); color: var(--danger); font-weight: 600; }
 .examples button.hot:hover { background: var(--danger-bg); }
