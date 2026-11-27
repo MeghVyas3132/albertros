@@ -1,0 +1,25 @@
+name: publish to GitHub Packages
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@meghvyas3132'
+      - run: npm ci --ignore-scripts
+      - run: npx tsc -p tsconfig.json
+      # GitHub Packages needs the owner scope; npmjs.com keeps the unscoped name "albertros".
+      - run: npm pkg set name=@meghvyas3132/albertros publishConfig.registry=https://npm.pkg.github.com
+      - run: npm publish --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

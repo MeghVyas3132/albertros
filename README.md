@@ -1,5 +1,7 @@
 # Albertros
 
+[![npm](https://img.shields.io/npm/v/albertros?color=cb3837&label=npm)](https://www.npmjs.com/package/albertros) [![ci](https://github.com/MeghVyas3132/albertros/actions/workflows/ci.yml/badge.svg)](https://github.com/MeghVyas3132/albertros/actions/workflows/ci.yml) [![GitHub Action](https://img.shields.io/badge/action-albertros--action-2088ff)](https://github.com/MeghVyas3132/albertros-action) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 **Know which npm dependency will hurt you, before `npm install` does.**
 
 In September 2025, `chalk` and `debug` (2.6 billion downloads a week between them) were published with a crypto-stealing payload from a phished maintainer account. A week later the Shai-Hulud worm used stolen npm tokens to republish hundreds of packages with a postinstall script that harvested secrets and spread itself. `npm audit` stayed quiet through both: it reports known vulnerabilities, not attacks in progress.
@@ -24,7 +26,7 @@ Plus the same cryptographic checks as `npm audit signatures`: every version's np
 | | |
 |---|---|
 | **Web app** | https://albertros-rouge.vercel.app |
-| **CLI** | `npx albertros check` |
+| **CLI** | `npx albertros check` · [npm](https://www.npmjs.com/package/albertros) · [GitHub Packages](https://github.com/MeghVyas3132/albertros/pkgs/npm/albertros) |
 | **GitHub Action** | `uses: MeghVyas3132/albertros@main` |
 | **Recently scanned** | https://albertros-rouge.vercel.app/history (public repos checked, plus anonymous CODEFESTTHON 2026 results) |
 
