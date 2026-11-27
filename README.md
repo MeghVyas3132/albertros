@@ -12,6 +12,14 @@ Albertros checks every dependency for the signs of an attack, and gives each one
 
 It runs in the browser (nothing is uploaded), in your terminal, and in CI.
 
+## What no other checker shows you
+
+1. **Who can push code into your app.** Albertros resolves your full dependency tree and counts every npm account that can publish into it. Express: **259 strangers**. Then it finds the one account whose stolen password reaches the most of your app (for Express, one account reaches **75% of its direct dependencies**) and animates the attack spreading through your dependency graph. On 8 Sept 2025 this exact scenario happened: one phished account, 18 packages.
+2. **Proof the package is its source code.** npm records the git commit every release was built from. Albertros downloads the tarball, fetches the same files from GitHub at that commit, and shows **the exact lines that ship to users but don't exist in the repo**. The xz backdoor and the chalk hijack both lived only in published artifacts, never in git. Pattern matchers guess whether code looks bad. This shows whether the release is what the maintainers actually wrote.
+3. **Attack replays.** One click takes the real `chalk@5.6.2` (or `@ctrl/tinycolor@4.1.0`) tarball, applies the change the Sept 2025 attackers made (an inert stand-in, never executed), and runs the normal checks on it. You watch Albertros catch the hijack from the code alone, minutes after publish, with no malware database. OSV only listed the real attack after it was reported.
+
+Plus the same cryptographic checks as `npm audit signatures`: every version's npm registry signature (ECDSA P-256) is verified, and every scanned tarball is checked against its published sha512, all in the browser with WebCrypto.
+
 | | |
 |---|---|
 | **Web app** | https://albertros-rouge.vercel.app |
@@ -20,9 +28,10 @@ It runs in the browser (nothing is uploaded), in your terminal, and in CI.
 
 ## Try it in 30 seconds
 
-1. Open [albertros-rouge.vercel.app](https://albertros-rouge.vercel.app) and click **A risky project**. You get 6 dangerous dependencies, each with its reason: npm takedowns, known-malicious versions, a name that anyone could register.
-2. Click **The Sept 2025 chalk/debug hijack** to see the real compromised versions flagged.
-3. Paste your own `package.json` or `package-lock.json`, or enter any public GitHub repo.
+1. Open [albertros-rouge.vercel.app](https://albertros-rouge.vercel.app) and click **Replay the chalk hijack**. The genuine release matches its git commit; the hijacked one is Danger, with the injected lines in red.
+2. Click **expressjs/express**, then pick the top account under **Weakest links** to watch one phished password spread through the graph.
+3. Click **A risky project**. You get 6 dangerous dependencies, each with its reason: npm takedowns, known-malicious versions, a name that anyone could register.
+4. Paste your own `package.json` or `package-lock.json`, or enter any public GitHub repo.
 
 ## How it decides
 
@@ -74,6 +83,27 @@ For anything with an install script or another finding (or every package with `-
 | Obfuscated code | `_0x…` identifiers, thousands of hex escapes, huge base64 blobs |
 
 Secret access or a raw IP becomes **Danger** when it is combined with network calls or happens during install. Install-time downloaders in very popular packages (esbuild, sharp) are reported as info, not review.
+
+### 5. Signatures and integrity
+| Finding | Verdict |
+|---|---|
+| npm registry signature over `name@version:integrity` fails to verify | Danger |
+| No registry signature at all | Review |
+| Downloaded tarball does not match its published sha512 | Danger |
+
+### 6. Source verification
+For scanned packages hosted on GitHub, the tarball is compared file by file with the repo at the release's `gitHead` (monorepo directories are located automatically).
+
+| Finding | Verdict |
+|---|---|
+| Published lines not in git, and those lines match an attack pattern | Danger |
+| Published files differ from the source commit | Review |
+| The install script is not in the repo | Review |
+| The release's source commit doesn't exist in the repo | Review |
+| Every comparable file matches the commit | Good ("Matches git a1b2c3d") |
+
+### Trust map
+`computeTrust()` builds the dependency graph (from the lockfile, or by resolving `package.json` the way npm would), collects every maintainer account, and for each account computes which of your direct dependencies would deliver its code if it were compromised. The CLI prints the summary; the web app draws the graph and animates the attack.
 
 ### Score
 `100 − 25 × danger − 3 × review`, floored at 0.
@@ -169,7 +199,6 @@ npx tsc && node dist/cli.js check .
 - [ ] Publish `albertros` to npm so `npx albertros` works without GitHub
 - [ ] pnpm-lock.yaml and yarn.lock support
 - [ ] Diff mode for PRs: only the dependencies a PR adds or changes
-- [ ] Compare a release's tarball with its git tag (code shipped that is not in the repo)
 - [ ] Watch mode: webhook or email alert when a dependency you use publishes a suspicious release
 - [ ] VS Code extension that flags risky imports as you type
 

@@ -26,19 +26,27 @@ That trust keeps getting abused:
 
 `npm audit` didn't catch any of these. It only knows about vulnerabilities after someone files an advisory, not attacks in progress.
 
-**Albertros** checks every dependency for the signs of an attack and gives each one a verdict, **Danger**, **Review** or **Safe**, with the reason in plain language:
+**Albertros** does three things no other checker shows you:
+
+- **Who can push code into your app.** It resolves your whole dependency tree and counts every npm account that can publish into it. Express: **259 strangers**. Then it finds the single account whose stolen password reaches the most of your app (one account reaches 75% of Express's direct dependencies) and animates the attack spreading through your dependency graph.
+- **Proof the package is its source code.** It downloads the published tarball, fetches the same files from GitHub at the exact commit npm says the release came from, and shows **the lines that ship to users but don't exist in git**. The xz backdoor and the chalk hijack both lived only in published artifacts.
+- **Attack replays.** One click re-creates the Sept 2025 chalk hijack and the Shai-Hulud worm on the real tarballs (inert stand-in code, never executed) and catches them live, from the code alone, minutes after publish, without any malware database.
+
+On top of that, it checks every dependency for the signs of an attack and gives each one a verdict, **Danger**, **Review** or **Safe**, with the reason in plain language:
 
 1. **Registry facts.** Packages npm took down as malware, names that don't exist on npm (anyone could register them: dependency confusion), unpublished versions, typosquats of popular packages.
 2. **Known malware.** Every exact version is checked against OSV.dev, which includes the OpenSSF malicious-packages feed.
 3. **Signs of a hijacked release.** A first release by a new account, an install script that wasn't there before, CI provenance that suddenly stops, a sudden size jump, a release only hours old. Two at once means Danger: the exact pattern chalk/debug and Shai-Hulud showed.
 4. **The code itself.** It downloads the published tarball and looks for what real attacks do: install scripts that reach the internet, hidden `eval`, reading `.npmrc`/SSH keys/tokens, hooking `window.ethereum`, obfuscation.
 
+It also verifies every version's npm registry signature (ECDSA P-256, the same check as `npm audit signatures`) and every tarball's sha512, in the browser with WebCrypto.
+
 **Three ways to use it:**
 - **Web app:** paste a package.json or lockfile, or enter a GitHub repo. It runs entirely in your browser and uploads nothing.
 - **CLI:** `npx github:MeghVyas3132/albertros check`
 - **GitHub Action:** fails the PR on danger, writes a job summary, and uploads SARIF so findings appear in GitHub's Security tab. Albertros already runs this on its own repo.
 
-Production details: a config file to allow-list packages, `--fail-on` policy, JSON/SARIF/Markdown output, retries on registry errors, 12 tests including a live test against the real chalk@5.6.1 hijack, and CI on every push plus nightly.
+Production details: a config file to allow-list packages, `--fail-on` policy, JSON/SARIF/Markdown output, retries on registry errors, 15 tests including a live test against the real chalk@5.6.1 hijack, and CI on every push plus nightly.
 
 ## Challenges we ran into
 
