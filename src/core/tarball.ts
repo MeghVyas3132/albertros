@@ -1,3 +1,5 @@
+import { checkIntegrity } from './verify.js';
+
 export interface PkgFile {
   path: string;
   size: number;
@@ -20,13 +22,15 @@ async function gunzip(data: ArrayBuffer): Promise<Uint8Array> {
 }
 
 /** Download an npm tarball and return its files (text for code files). Runs in browsers and Node 18+. */
-export async function readTarball(url: string): Promise<PkgFile[]> {
+export async function readTarball(url: string, integrity?: string): Promise<PkgFile[] & { integrityOk?: boolean | null }> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`tarball HTTP ${res.status}`);
   const buf = await res.arrayBuffer();
   if (buf.byteLength > MAX_TGZ) throw new Error('tarball too large to scan');
+  const integrityOk = integrity ? await checkIntegrity(buf, integrity) : null;
   const tar = await gunzip(buf);
-  const files: PkgFile[] = [];
+  const files: PkgFile[] & { integrityOk?: boolean | null } = [];
+  files.integrityOk = integrityOk;
   const dec = new TextDecoder('utf-8', { fatal: false });
   let off = 0;
   let longName: string | null = null;

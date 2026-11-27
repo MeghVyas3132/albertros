@@ -6,3 +6,4 @@ export { readTarball } from './tarball.js';
 export { typosquatOf } from './typosquat.js';
 export { applyConfig, toSarif, toMarkdown } from './report.js';
 export type { AlbertrosConfig } from './report.js';
+export { verifyRegistrySignature, checkIntegrity } from './verify.js';

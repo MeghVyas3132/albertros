@@ -4,6 +4,7 @@ import { queryOsv } from './osv.js';
 import { installEntryFiles, scanFiles, scanInstallScript } from './scan.js';
 import { readTarball } from './tarball.js';
 import { typosquatOf } from './typosquat.js';
+import { verifyRegistrySignature } from './verify.js';
 import type { AnalyzeOptions, DepInput, Finding, PackageReport, ProjectReport, Verdict } from './types.js';
 
 interface Work extends PackageReport {
@@ -163,6 +164,24 @@ async function resolveOne(d: DepInput, now: number): Promise<Work> {
     return r;
   }
 
+  const sig = await verifyRegistrySignature(manifest.name || a.name, manifest.version, manifest.dist).catch(() => 'unknown-key' as const);
+  r.meta.signature = sig;
+  if (sig === 'invalid') {
+    r.findings.push({
+      code: 'signature-invalid',
+      severity: 'danger',
+      title: 'npm registry signature does not match',
+      detail: 'The registry signs every version (name, version and tarball hash). This one fails verification, so what you would install is not what npm published.',
+      evidence: [`${a.name}@${manifest.version}:${manifest.dist?.integrity}`],
+    });
+  } else if (sig === 'missing') {
+    r.findings.push({
+      code: 'signature-missing',
+      severity: 'review',
+      title: 'No npm registry signature',
+      detail: 'npm signs every version it serves. A missing signature usually means a mirror or proxy rewrote the metadata.',
+    });
+  }
   r.findings.push(...scanInstallScript(manifest.scripts));
   if (manifest.gypfile && !INSTALL_KEYS.some((k) => manifest.scripts?.[k])) {
     r.findings.push({ code: 'install-script-native', severity: 'info', title: 'Compiles native code on install', detail: 'Has a binding.gyp, so npm runs node-gyp during install.' });
@@ -268,7 +287,17 @@ export async function scanPackageCode(r: PackageReport & { manifest?: any }): Pr
   const m = (r as Work).manifest;
   if (!m?.dist?.tarball || r.scanned) return;
   try {
-    const files = await readTarball(m.dist.tarball);
+    const files = await readTarball(m.dist.tarball, m.dist.integrity);
+    if (files.integrityOk === false) {
+      r.meta.integrity = 'mismatch';
+      r.findings.push({
+        code: 'integrity-mismatch',
+        severity: 'danger',
+        title: 'Tarball does not match its published hash',
+        detail: 'The file served for download differs from the sha512 npm recorded at publish time. Something between you and the publisher changed it.',
+        evidence: [m.dist.integrity],
+      });
+    } else if (files.integrityOk) r.meta.integrity = 'verified';
     const res = scanFiles(files, installEntryFiles(m.scripts));
     r.findings.push(...res.findings);
     r.findings.push({

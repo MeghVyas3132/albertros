@@ -27,6 +27,8 @@ export interface PackageMeta {
   unpackedSize?: number;
   hasInstallScript?: boolean;
   provenance?: boolean;
+  signature?: 'valid' | 'invalid' | 'missing' | 'unknown-key';
+  integrity?: 'verified' | 'mismatch';
 }
 
 export interface PackageReport {
