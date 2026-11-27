@@ -1,6 +1,7 @@
 export * from './types.js';
 export { analyzeProject, scanPackageCode, verdictOf, scoreOf, sortReports } from './analyze.js';
-export { parseInput, parseManifest, parseLock, parsePnpmLock, parseYarnLock, parseList, parseGithub, fetchGithub } from './input.js';
+export { parseInput, parseManifest, parseLock, parsePnpmLock, parseYarnLock, parseList, parseGithub, fetchGithub, collectProject } from './input.js';
+export type { ProjectFile } from './input.js';
 export { scanFiles, scanInstallScript, installEntryFiles } from './scan.js';
 export { readTarball } from './tarball.js';
 export { typosquatOf } from './typosquat.js';
@@ -14,3 +15,4 @@ export { computeTrust } from './trust.js';
 export type { TrustReport, Account } from './trust.js';
 export { buildWorm } from './worm.js';
 export type { WormModel, WormRun, WormGeneration } from './worm.js';
+export { setDownloadsProxy } from './net.js';

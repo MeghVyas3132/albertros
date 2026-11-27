@@ -57,8 +57,25 @@ export function getManifest(name: string, version: string): Promise<any | null> 
   return p;
 }
 
+let downloadsProxy: string | null = null;
+/** Route download counts through a cached proxy (the web app uses its own /api/downloads). */
+export function setDownloadsProxy(url: string | null) {
+  downloadsProxy = url;
+}
+
 /** Weekly downloads. Bulk endpoint for unscoped names (128 per call), one call each for scoped. */
 export async function getDownloads(names: string[]): Promise<Map<string, number | null>> {
+  if (downloadsProxy) {
+    const out = new Map<string, number | null>();
+    const uniq = [...new Set(names)];
+    const chunks: string[][] = [];
+    for (let i = 0; i < uniq.length; i += 100) chunks.push(uniq.slice(i, i + 100));
+    await pool(chunks, 4, async (chunk) => {
+      const j = await getJson<Record<string, number | null>>(`${downloadsProxy}?names=${chunk.map(encodeURIComponent).join(',')}`).catch(() => null);
+      for (const n of chunk) out.set(n, j?.[n] ?? null);
+    });
+    return out;
+  }
   const out = new Map<string, number | null>();
   const unscoped = [...new Set(names.filter((n) => !n.startsWith('@')))];
   const scoped = [...new Set(names.filter((n) => n.startsWith('@')))];

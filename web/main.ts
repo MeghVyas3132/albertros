@@ -1,4 +1,4 @@
-import { analyzeProject, buildWorm, computeTrust, fetchGithub, parseInput, parseList, replayAttack, scanPackageCode, scoreOf, sortReports } from '../src/core/index.js';
+import { analyzeProject, buildWorm, computeTrust, setDownloadsProxy, fetchGithub, parseInput, parseList, replayAttack, scanPackageCode, scoreOf, sortReports } from '../src/core/index.js';
 import type { Finding, PackageReport, ProjectReport, ReplayResult, TrustReport, Verdict, WormModel } from '../src/core/index.js';
 import { TrustGraph } from './graph.js';
 
@@ -24,6 +24,8 @@ const RISKY = JSON.stringify(
   null,
   2,
 );
+
+if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) setDownloadsProxy('/api/downloads');
 
 let tab: 'repo' | 'paste' | 'list' = 'repo';
 let report: ProjectReport | null = null;

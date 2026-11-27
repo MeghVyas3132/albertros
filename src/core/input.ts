@@ -200,88 +200,115 @@ export function parseGithub(input: string): { owner: string; repo: string; ref: 
   return { owner: m[1], repo: m[2], ref: m[3] || 'HEAD', dir: (m[4] || '').replace(/^\//, '') };
 }
 
-/** Fetch a repo's lockfile (npm, pnpm or yarn) or its package.json files, including monorepo workspaces. */
+export interface ProjectFile {
+  path: string;
+  text: string;
+}
+
+const PROJECT_FILES = ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'package.json'];
+const SKIP_DIR = /(^|\/)(node_modules|\.git|dist|build|out|coverage|vendor|fixtures?|__tests__|test|tests|examples?|\.next|\.turbo)(\/|$)/;
+
+/**
+ * Merge every project in a repo: each folder contributes its lockfile (exact versions) if it has one,
+ * otherwise its package.json. Covers monorepos and "frontend/ + backend/" layouts.
+ */
+export function collectProject(files: ProjectFile[], opts: { includeDev?: boolean } = {}): { deps: DepInput[]; kinds: string[]; folders: string[] } {
+  const byDir = new Map<string, Map<string, string>>();
+  for (const f of files) {
+    const i = f.path.lastIndexOf('/');
+    const dir = i === -1 ? '' : f.path.slice(0, i);
+    const base = i === -1 ? f.path : f.path.slice(i + 1);
+    if (SKIP_DIR.test(dir)) continue;
+    if (!byDir.has(dir)) byDir.set(dir, new Map());
+    byDir.get(dir)!.set(base, f.text);
+  }
+  // A root pnpm/npm lockfile already covers every workspace below it.
+  const root = byDir.get('');
+  const rootLock = root && (root.get('pnpm-lock.yaml') || root.get('package-lock.json'));
+  const deps: DepInput[] = [];
+  const kinds = new Set<string>();
+  const folders: string[] = [];
+  const localNames = new Set<string>();
+  for (const m of byDir.values()) {
+    try {
+      const n = m.get('package.json') && JSON.parse(m.get('package.json')!).name;
+      if (n) localNames.add(n);
+    } catch {
+      /* ignore */
+    }
+  }
+  for (const [dir, m] of [...byDir.entries()].sort((a, b) => a[0].length - b[0].length)) {
+    if (rootLock && dir !== '' && !m.has('package-lock.json') && !m.has('pnpm-lock.yaml') && !m.has('yarn.lock')) continue;
+    let parsed: ParsedInput | null = null;
+    let pkg: any = null;
+    try {
+      pkg = m.get('package.json') ? JSON.parse(m.get('package.json')!) : null;
+    } catch {
+      /* broken package.json */
+    }
+    const directNames = new Set(pkg ? [...Object.keys(pkg.dependencies || {}), ...Object.keys(pkg.devDependencies || {}), ...Object.keys(pkg.optionalDependencies || {})] : []);
+    try {
+      if (m.get('package-lock.json')) parsed = parseLock(JSON.parse(m.get('package-lock.json')!), opts);
+      else if (m.get('pnpm-lock.yaml')) parsed = parsePnpmLock(m.get('pnpm-lock.yaml')!, opts);
+      else if (m.get('yarn.lock')) parsed = parseYarnLock(m.get('yarn.lock')!, directNames);
+      else if (pkg) parsed = parseManifest(pkg, opts);
+    } catch {
+      parsed = null;
+    }
+    if (!parsed) continue;
+    kinds.add(parsed.kind);
+    folders.push(dir || '.');
+    deps.push(...parsed.deps.filter((d) => !localNames.has(d.name) && !/^(workspace|link|file):/.test(d.spec)));
+  }
+  return { deps, kinds: [...kinds], folders };
+}
+
+async function rawFile(g: { owner: string; repo: string; ref: string }, path: string): Promise<string | null> {
+  try {
+    const r = await fetch(`https://raw.githubusercontent.com/${g.owner}/${g.repo}/${g.ref}/${path}`);
+    return r.ok ? await r.text() : null;
+  } catch {
+    return null;
+  }
+}
+
+const COMMON_DIRS = ['', 'frontend', 'backend', 'client', 'server', 'web', 'app', 'api', 'cli', 'ui', 'site', 'landing', 'website', 'dashboard', 'admin', 'apps/web', 'apps/api', 'apps/frontend', 'apps/backend', 'packages/core', 'packages/web', 'src'];
+
+/** Fetch every lockfile and package.json in a public GitHub repo, including nested folders. */
 export async function fetchGithub(input: string, opts: { includeDev?: boolean } = {}): Promise<ParsedInput & { source: string }> {
   const g = parseGithub(input);
   if (!g) throw new Error('Use a GitHub repo like "expressjs/express" or https://github.com/owner/repo');
-  const base = `https://raw.githubusercontent.com/${g.owner}/${g.repo}/${g.ref}/${g.dir ? g.dir + '/' : ''}`;
-  const get = async (f: string) => {
-    const r = await fetch(base + f);
-    return r.ok ? r.text() : null;
-  };
+  const prefix = g.dir ? g.dir + '/' : '';
   const source = `github.com/${g.owner}/${g.repo}${g.dir ? '/' + g.dir : ''}`;
-  const [pkg, lock, pnpm, yarn] = await Promise.all([get('package.json'), get('package-lock.json'), get('pnpm-lock.yaml'), get('yarn.lock')]);
 
-  let root: any = {};
+  // 1. Every project file in the repo, from one tree listing.
+  let paths: string[] | null = null;
   try {
-    root = pkg ? JSON.parse(pkg) : {};
+    const res = await fetch(`https://api.github.com/repos/${g.owner}/${g.repo}/git/trees/${g.ref}?recursive=1`);
+    if (res.ok) {
+      const tree = await res.json();
+      paths = (tree.tree || [])
+        .map((t: any) => t.path as string)
+        .filter((p: string) => p.startsWith(prefix) && PROJECT_FILES.some((f) => p === prefix + f || p.endsWith('/' + f)))
+        .filter((p: string) => !SKIP_DIR.test(p.slice(0, p.lastIndexOf('/') + 1)))
+        .slice(0, 80);
+    }
+  } catch {
+    /* rate limited or offline */
+  }
+  // 2. GitHub API unavailable (60 requests/hour without a token): probe the usual folder names directly.
+  if (!paths) paths = COMMON_DIRS.flatMap((d) => PROJECT_FILES.map((f) => prefix + (d ? d + '/' : '') + f));
+
+  const files = (await Promise.all(paths.map(async (p) => ({ path: p.slice(prefix.length), text: await rawFile(g, p) })))).filter((f): f is ProjectFile => f.text != null);
+  if (!files.length) throw new Error(`No package.json or lockfile found anywhere in ${g.owner}/${g.repo}${g.dir ? '/' + g.dir : ''}. Is it a public JavaScript project?`);
+  const { deps, kinds, folders } = collectProject(files, opts);
+  if (!deps.length) throw new Error(`${g.owner}/${g.repo} has no npm dependencies to check.`);
+  let rootName: string | undefined;
+  try {
+    rootName = JSON.parse(files.find((f) => f.path === 'package.json')?.text || '{}').name;
   } catch {
     /* ignore */
   }
-  if (lock) {
-    try {
-      return { ...parseLock(JSON.parse(lock), opts), source: `${source} (package-lock.json)` };
-    } catch {
-      /* fall through */
-    }
-  }
-  if (pnpm) {
-    try {
-      return { ...parsePnpmLock(pnpm, opts), source: `${source} (pnpm-lock.yaml)` };
-    } catch {
-      /* fall through */
-    }
-  }
-  const manifests = await workspaceManifests(g, root);
-  const directNames = new Set(manifests.flatMap((m) => [...Object.keys(m.dependencies || {}), ...Object.keys(m.devDependencies || {}), ...Object.keys(m.optionalDependencies || {})]));
-  if (yarn) {
-    try {
-      return { ...parseYarnLock(yarn, directNames), source: `${source} (yarn.lock)` };
-    } catch {
-      /* fall through */
-    }
-  }
-  const deps: DepInput[] = [];
-  const local = new Set(manifests.map((m) => m.name).filter(Boolean));
-  for (const m of manifests) {
-    try {
-      deps.push(...parseManifest(m, opts).deps.filter((d) => !local.has(d.name) && !/^workspace:/.test(d.spec)));
-    } catch {
-      /* no deps in this one */
-    }
-  }
-  if (!deps.length) {
-    if (!pkg && manifests.length <= 1) throw new Error(`No package.json found in ${g.owner}/${g.repo}${g.dir ? '/' + g.dir : ''}. Is it a public JavaScript project?`);
-    throw new Error(`${g.owner}/${g.repo} has no npm dependencies to check.`);
-  }
-  return { kind: 'package.json', name: root.name, deps, source: `${source} (${manifests.length > 1 ? `${manifests.length} package.json files` : 'package.json'})` };
-}
-
-/** Root package.json plus every workspace package.json (found with one GitHub tree call). */
-async function workspaceManifests(g: { owner: string; repo: string; ref: string; dir: string }, root: any): Promise<any[]> {
-  const out = Object.keys(root).length ? [root] : [];
-  const hasDeps = (m: any) => Object.keys({ ...m.dependencies, ...m.devDependencies, ...m.optionalDependencies }).length > 0;
-  const isMono = !!root.workspaces || !hasDeps(root || {});
-  if (!isMono) return out;
-  try {
-    const res = await fetch(`https://api.github.com/repos/${g.owner}/${g.repo}/git/trees/${g.ref}?recursive=1`);
-    if (!res.ok) return out;
-    const tree = await res.json();
-    const prefix = g.dir ? g.dir + '/' : '';
-    const paths: string[] = (tree.tree || [])
-      .map((t: any) => t.path as string)
-      .filter((p: string) => p.startsWith(prefix) && p.endsWith('/package.json') && !/(^|\/)(node_modules|test|tests|fixtures|examples?|__tests__)\//.test(p))
-      .slice(0, 40);
-    const raws = await Promise.all(
-      paths.map((p) =>
-        fetch(`https://raw.githubusercontent.com/${g.owner}/${g.repo}/${g.ref}/${p}`)
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-      ),
-    );
-    out.push(...raws.filter(Boolean));
-  } catch {
-    /* rate limited: root only */
-  }
-  return out;
+  const where = folders.length === 1 ? (folders[0] === '.' ? kinds[0] : `${folders[0]}/ ${kinds[0]}`) : `${folders.length} folders: ${folders.slice(0, 4).join(', ')}${folders.length > 4 ? '…' : ''}`;
+  return { kind: (kinds[0] as ParsedInput['kind']) || 'package.json', name: rootName, deps, source: `${source} (${where})` };
 }

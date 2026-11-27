@@ -255,3 +255,17 @@ lodash@^4.17.21:
 `;
   assert.deepEqual(parseYarnLock(berry).deps.map((d) => `${d.name}@${d.spec}`), ['lodash@4.17.21']);
 });
+
+import { collectProject } from '../dist/core/index.js';
+
+test('collects every folder of a repo: lockfile where present, package.json otherwise', () => {
+  const lock = (deps) => JSON.stringify({ lockfileVersion: 3, packages: { '': { dependencies: Object.fromEntries(deps.map((d) => [d, '*'])) }, ...Object.fromEntries(deps.map((d) => [`node_modules/${d}`, { version: '1.0.0' }])) } });
+  const c = collectProject([
+    { path: 'frontend/package.json', text: JSON.stringify({ name: 'web', dependencies: { react: '^18' } }) },
+    { path: 'frontend/package-lock.json', text: lock(['react', 'loose-envify']) },
+    { path: 'backend/package.json', text: JSON.stringify({ name: 'api', dependencies: { express: '^4', web: 'workspace:*' } }) },
+    { path: 'backend/node_modules/x/package.json', text: JSON.stringify({ dependencies: { evil: '1' } }) },
+  ]);
+  assert.deepEqual(c.folders.sort(), ['backend', 'frontend']);
+  assert.deepEqual(c.deps.map((d) => d.name).sort(), ['express', 'loose-envify', 'react']);
+});

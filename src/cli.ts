@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { analyzeProject, applyConfig, computeTrust, fetchGithub, parseInput, parseGithub, parseList, toMarkdown, toSarif } from './core/index.js';
+import { analyzeProject, applyConfig, collectProject, computeTrust, fetchGithub, parseInput, parseGithub, parseList, toMarkdown, toSarif } from './core/index.js';
 import type { AlbertrosConfig, PackageReport, ProjectReport, Verdict } from './core/index.js';
 
 const VERSION = '0.1.0';
@@ -114,13 +114,30 @@ async function main() {
   let deps;
   let file: string | undefined;
   let fileText: string | undefined;
-  if (local) {
+  if (local && statSync(asPath).isDirectory()) {
+    // Every lockfile / package.json in this folder and its subfolders (monorepos, frontend/ + backend/).
+    const found: { path: string; text: string }[] = [];
+    const walk = (dir: string, depth: number) => {
+      if (depth > 5 || found.length > 80) return;
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.isDirectory()) {
+          if (!/^(node_modules|\.git|dist|build|out|coverage|vendor|\.next|\.turbo|fixtures?|tests?|__tests__|examples?)$/.test(e.name)) walk(join(dir, e.name), depth + 1);
+        } else if (['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'package.json'].includes(e.name)) {
+          found.push({ path: relative(asPath, join(dir, e.name)), text: readFileSync(join(dir, e.name), 'utf8') });
+        }
+      }
+    };
+    walk(asPath, 0);
+    if (!found.length) throw new Error(`No package.json or lockfile in ${asPath} or its subfolders`);
+    const c = collectProject(found, { includeDev });
+    if (!c.deps.length) throw new Error(`No npm dependencies found in ${asPath}`);
+    deps = c.deps;
+    const rootFile = ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'package.json'].find((f) => found.some((x) => x.path === f));
+    file = rootFile ? join(asPath, rootFile) : undefined;
+    fileText = rootFile ? found.find((x) => x.path === rootFile)!.text : undefined;
+    source = `${relative(process.cwd(), asPath) || '.'} (${c.folders.length === 1 ? c.kinds[0] : `${c.folders.length} folders: ${c.folders.slice(0, 4).join(', ')}${c.folders.length > 4 ? '…' : ''}`})`;
+  } else if (local) {
     file = asPath;
-    if (statSync(asPath).isDirectory()) {
-      const lock = join(asPath, 'package-lock.json');
-      file = existsSync(lock) ? lock : join(asPath, 'package.json');
-    }
-    if (!existsSync(file)) throw new Error(`No package.json or package-lock.json in ${asPath}`);
     fileText = readFileSync(file, 'utf8');
     deps = parseInput(fileText, { includeDev }).deps;
     source = relative(process.cwd(), file) || file;

@@ -1,4 +1,4 @@
-import { head, put } from '@vercel/blob';
+import { list, put } from '@vercel/blob';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 /**
@@ -22,21 +22,36 @@ interface Index {
   entries: Entry[];
 }
 
-const PATH = 'history/index.json';
+const PREFIX = 'history/scans/';
 const REPO_RE = /^[A-Za-z0-9_.-]{1,39}\/[A-Za-z0-9_.-]{1,100}$/;
 const recent = new Map<string, number>();
 
 const n = (v: unknown, max: number) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
 
+/** One blob per scan (no read-modify-write races); the newest scan of each repo wins. */
 async function load(): Promise<Index> {
-  try {
-    const meta = await head(PATH);
-    const res = await fetch(`${meta.url}?v=${new Date(meta.uploadedAt).getTime()}`, { cache: 'no-store' });
-    if (res.ok) return (await res.json()) as Index;
-  } catch {
-    /* first write */
-  }
-  return { updatedAt: new Date().toISOString(), totals: { scans: 0, packages: 0, dangers: 0 }, entries: [] };
+  const blobs: { url: string; pathname: string; uploadedAt: Date }[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await list({ prefix: PREFIX, limit: 1000, cursor });
+    blobs.push(...page.blobs);
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor && blobs.length < 5000);
+  blobs.sort((a, b) => +new Date(b.uploadedAt) - +new Date(a.uploadedAt));
+  const latest = blobs.slice(0, 120);
+  const entries = (await Promise.all(latest.map((b) => fetch(b.url).then((r) => (r.ok ? (r.json() as Promise<Entry>) : null)).catch(() => null)))).filter(Boolean) as Entry[];
+  const seen = new Set<string>();
+  const unique = entries.filter((e) => {
+    const k = e.repo.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  return {
+    updatedAt: latest[0] ? new Date(latest[0].uploadedAt).toISOString() : new Date().toISOString(),
+    totals: { scans: blobs.length, packages: entries.reduce((a, e) => a + e.packages, 0), dangers: entries.reduce((a, e) => a + e.danger, 0) },
+    entries: unique.slice(0, 60),
+  };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -77,12 +92,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     topPct: n(b.topPct, 100),
     wormPct: n(b.wormPct, 100),
   };
-  const idx = await load();
-  idx.entries = [entry, ...idx.entries.filter((e) => e.repo.toLowerCase() !== repo.toLowerCase())].slice(0, 300);
-  idx.totals.scans += 1;
-  idx.totals.packages += entry.packages;
-  idx.totals.dangers += entry.danger;
-  idx.updatedAt = entry.scannedAt;
-  await put(PATH, JSON.stringify(idx), { access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 60 });
+  const key = `${PREFIX}${Date.now().toString(36)}-${repo.replace(/[^A-Za-z0-9_.-]/g, '_')}.json`;
+  await put(key, JSON.stringify(entry), { access: 'public', addRandomSuffix: true, contentType: 'application/json' });
   return res.status(200).json({ ok: true });
 }
