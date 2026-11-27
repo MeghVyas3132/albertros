@@ -4,7 +4,7 @@
   --card: #fbfaf6;
   --ink: #16161a;
   --ink-2: #4a4944;
-  --ink-3: #85827a;
+  --ink-3: #6a675f;
   --line: #ddd7ca;
   --danger: #c8321f;
   --danger-bg: #fbe5e0;
@@ -25,7 +25,7 @@
     --card: #18181c;
     --ink: #f1eee6;
     --ink-2: #bdb9af;
-    --ink-3: #85827a;
+    --ink-3: #a19d93;
     --line: #2b2b31;
     --danger: #ff6a55;
     --danger-bg: #3a1a15;
@@ -65,7 +65,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 main { max-width: 1080px; margin: 0 auto; padding: 0 24px 64px; }
 
-.hero { padding: 48px 0 28px; max-width: 820px; }
+.hero { padding: 56px 0 28px; max-width: 820px; }
 .eyebrow { margin: 0 0 14px; font: 500 13px var(--mono); color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
 h1 { font-size: clamp(34px, 5.4vw, 58px); line-height: 1.04; letter-spacing: -0.035em; margin: 0 0 20px; font-weight: 700; text-wrap: balance; }
 h1 em { font-style: normal; color: var(--danger); }
