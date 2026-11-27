@@ -35,6 +35,24 @@
         </p>
       </section>
 
+      <section class="pain" aria-label="Why this matters">
+        <article>
+          <time>8 Sept 2025</time>
+          <h3>One phished password, 18 packages</h3>
+          <p>chalk, debug and 16 more shipped a crypto stealer. About 2.6 billion weekly downloads.</p>
+        </article>
+        <article>
+          <time>15 Sept 2025</time>
+          <h3>A worm that spreads through npm</h3>
+          <p>Shai-Hulud stole tokens on install and republished 500+ packages with itself inside.</p>
+        </article>
+        <article>
+          <time>Both times</time>
+          <h3><code>npm audit</code> said nothing</h3>
+          <p>It only knows about bugs someone already reported, not attacks happening right now.</p>
+        </article>
+      </section>
+
       <section class="card input" aria-label="What to check">
         <div class="tabs" role="tablist">
           <button role="tab" data-tab="repo" aria-selected="true">GitHub repo</button>
@@ -59,9 +77,11 @@
         </form>
         <div class="examples">
           <span>Try:</span>
-          <button data-example="risky">A risky project</button>
-          <button data-example="hijack">The Sept 2025 chalk/debug hijack</button>
+          <button data-replay="chalk" class="hot">Replay the chalk hijack</button>
+          <button data-replay="shai-hulud" class="hot">Replay the Shai-Hulud worm</button>
           <button data-example="express">expressjs/express</button>
+          <button data-example="risky">A risky project</button>
+          <button data-example="hijack">Real hijacked versions</button>
         </div>
       </section>
 
@@ -85,6 +105,31 @@
             <button id="download">Download JSON</button>
           </div>
         </div>
+        <div class="replay card" id="replay" hidden></div>
+
+        <div class="trust card" id="trust" hidden>
+          <div class="trust-head">
+            <div>
+              <h2 id="trust-title"></h2>
+              <p id="trust-sub" class="sub"></p>
+            </div>
+            <div class="stats" id="trust-stats"></div>
+          </div>
+          <div class="trust-body">
+            <div class="graph-wrap">
+              <canvas id="graph" aria-label="Dependency graph"></canvas>
+              <div class="tip" id="tip" hidden></div>
+              <div class="legend"><span><i class="lg-safe"></i>package</span><span><i class="lg-review"></i>review</span><span><i class="lg-danger"></i>danger / compromised</span></div>
+            </div>
+            <div class="accounts">
+              <h3>Weakest links</h3>
+              <p class="hint">Pick an account to see what one stolen password does to your app.</p>
+              <ol id="accounts"></ol>
+              <p class="phish-msg" id="phish-msg"></p>
+            </div>
+          </div>
+        </div>
+
         <div class="filters">
           <div class="seg" id="filters"></div>
           <input id="search" type="search" placeholder="Filter packages" />

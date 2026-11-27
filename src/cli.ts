@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { appendFileSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
-import { analyzeProject, applyConfig, fetchGithub, parseInput, parseGithub, parseList, toMarkdown, toSarif } from './core/index.js';
+import { analyzeProject, applyConfig, computeTrust, fetchGithub, parseInput, parseGithub, parseList, toMarkdown, toSarif } from './core/index.js';
 import type { AlbertrosConfig, PackageReport, ProjectReport, Verdict } from './core/index.js';
 
 const VERSION = '0.1.0';
@@ -69,6 +69,15 @@ function print(report: ProjectReport) {
     `  ${bold('Score')} ${scoreCol(bold(score))}${dim('/100')}   ${red(counts.danger + ' danger')}  ${yellow(counts.review + ' review')}  ${green(counts.safe + ' safe')}${counts.unknown ? dim(`  ${counts.unknown} errors`) : ''}   ${dim(`${report.packages.length} packages`)}`,
   );
   if (report.skipped) console.log(dim(`  ${report.skipped} more packages not checked (raise --max)`));
+  const t = computeTrust(report.packages);
+  const top = t.accounts[0];
+  console.log('');
+  console.log(`  ${bold('Who can push code into this install')}`);
+  console.log(`  ${bold(t.people)} npm accounts can publish one of your ${t.packages} packages. ${bold(t.runOnInstall.length)} run code the moment you install. ${t.solo} have a single maintainer.`);
+  if (top && top.directReach.length) {
+    const pct = Math.round((100 * top.directReach.length) / Math.max(1, t.direct));
+    console.log(`  ${red('One phished account')} (${bold(top.name)}) reaches ${bold(pct + '%')} of your direct dependencies (${top.directReach.length}/${t.direct}) through ${top.packages.length} package${top.packages.length > 1 ? 's' : ''}: ${dim(top.packages.slice(0, 6).join(', ') + (top.packages.length > 6 ? '…' : ''))}`);
+  }
   console.log('');
 }
 

@@ -1,5 +1,6 @@
-import { analyzeProject, fetchGithub, parseInput, parseList, scanPackageCode, scoreOf, sortReports } from '../src/core/index.js';
-import type { Finding, PackageReport, ProjectReport, Verdict } from '../src/core/index.js';
+import { analyzeProject, computeTrust, fetchGithub, parseInput, parseList, replayAttack, scanPackageCode, scoreOf, sortReports } from '../src/core/index.js';
+import type { Finding, PackageReport, ProjectReport, ReplayResult, TrustReport, Verdict } from '../src/core/index.js';
+import { TrustGraph } from './graph.js';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -28,6 +29,9 @@ let tab: 'repo' | 'paste' | 'list' = 'repo';
 let report: ProjectReport | null = null;
 let filter: 'all' | Verdict = 'all';
 let shareQuery = '';
+let replay: ReplayResult | null = null;
+let trust: TrustReport | null = null;
+let graph: TrustGraph | null = null;
 const LABEL: Record<Verdict, string> = { danger: 'Danger', review: 'Review', safe: 'Safe', unknown: 'Error' };
 const SEV_ICON: Record<Finding['severity'], string> = { danger: '!', review: '?', info: 'i', good: '✓' };
 
@@ -55,6 +59,7 @@ function fmtNum(n: number | null | undefined) {
 function fmtAge(iso?: string) {
   if (!iso) return '';
   const d = (Date.now() - Date.parse(iso)) / 864e5;
+  if (d < 1 / 24) return `${Math.max(1, Math.round(d * 1440))} min ago`;
   if (d < 1) return `${Math.max(1, Math.round(d * 24))}h ago`;
   if (d < 60) return `${Math.round(d)}d ago`;
   if (d < 730) return `${Math.round(d / 30)}mo ago`;
@@ -75,12 +80,117 @@ const STAGE_WEIGHT: Record<string, [number, number]> = {
   'Scanning package code': [0.72, 0.98],
 };
 
+async function runReplay(id: string) {
+  $('#error').hidden = true;
+  $('#results').hidden = true;
+  const btns = document.querySelectorAll<HTMLButtonElement>('[data-replay]');
+  btns.forEach((b) => (b.disabled = true));
+  let step = 0;
+  try {
+    replay = await replayAttack(id, (stage) => progress(stage, 0, 1, [step * 0.33, ++step * 0.33]));
+    report = {
+      source: `Attack replay · ${replay.scenario.title}`,
+      packages: [replay.hijacked, replay.genuine],
+      score: 0,
+      counts: { danger: 0, review: 0, safe: 0, unknown: 0 },
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      skipped: 0,
+    };
+    shareQuery = `replay=${id}`;
+    history.replaceState(null, '', `#${shareQuery}`);
+    filter = 'all';
+    render();
+    document.querySelectorAll('#list-out .item').forEach((li) => li.classList.add('open'));
+  } catch (e) {
+    $('#error').textContent = (e as Error).message || String(e);
+    $('#error').hidden = false;
+  } finally {
+    $('#progress').hidden = true;
+    btns.forEach((b) => (b.disabled = false));
+  }
+}
+
+function renderReplay() {
+  const el = $('#replay');
+  if (!replay) {
+    el.hidden = true;
+    return;
+  }
+  const { scenario: sc, genuine, hijacked } = replay;
+  const src = genuine.meta.source;
+  el.hidden = false;
+  el.innerHTML = `
+    <div class="replay-story">
+      <time>${esc(sc.when)}</time>
+      <h3>The ${esc(sc.title)}, replayed</h3>
+      <p>${esc(sc.story)}</p>
+      <p class="fine">We took the real <b>${esc(sc.name)}@${esc(sc.genuine)}</b> tarball from npm, made the same kind of change the attackers made (an inert stand-in, never executed), and ran the normal checks. No malware database was used: OSV only listed the real attack after it was reported.</p>
+    </div>
+    <div class="versus">
+      <div class="vs vs-${hijacked.verdict}"><span class="pill p-${hijacked.verdict}">${LABEL[hijacked.verdict]}</span><b>${esc(sc.name)}@${esc(hijacked.version)}</b><small>hijacked release, ${hijacked.findings.filter((f) => f.severity === 'danger').length} danger signals</small></div>
+      <div class="vs vs-${genuine.verdict}"><span class="pill p-${genuine.verdict}">${LABEL[genuine.verdict]}</span><b>${esc(sc.name)}@${esc(genuine.version)}</b><small>${src?.status === 'verified' ? `matches git commit ${esc((src.commit || '').slice(0, 7))}` : 'genuine release'}</small></div>
+    </div>`;
+}
+
+function renderTrust() {
+  const el = $('#trust');
+  if (!report || replay || report.packages.length < 3) {
+    el.hidden = true;
+    return;
+  }
+  trust = computeTrust(report.packages);
+  const t = trust;
+  el.hidden = false;
+  $('#trust-title').innerHTML = `<b>${t.people}</b> strangers can push code into this app`;
+  $('#trust-sub').textContent = `That's how many npm accounts can publish one of its ${t.packages} packages${report.expanded ? ' (full tree resolved from package.json)' : ''}. Any one of them, phished, ships code straight to your machine and your users.`;
+  $('#trust-stats').innerHTML = [
+    [t.runOnInstall.length, 'run code the moment you install'],
+    [t.solo, 'have a single maintainer'],
+    [t.packages, 'packages in the tree'],
+  ]
+    .map(([n, l]) => `<div><b>${n}</b><span>${l}</span></div>`)
+    .join('');
+  const top = t.accounts.slice(0, 7);
+  $('#accounts').innerHTML = top
+    .map((a, i) => {
+      const pct = Math.round((100 * a.directReach.length) / Math.max(1, t.direct));
+      return `<li><button data-acct="${i}"><span class="who">${esc(a.name)}</span><span class="bar"><i style="width:${pct}%"></i></span><span class="pct">${pct}%</span><small>${a.packages.length} package${a.packages.length > 1 ? 's' : ''} · reaches ${a.directReach.length}/${t.direct} direct deps</small></button></li>`;
+    })
+    .join('');
+  $('#phish-msg').textContent = '';
+  if (!graph) {
+    graph = new TrustGraph($<HTMLCanvasElement>('#graph'), $('#tip'));
+    graph.onPick = (name) => {
+      const i = visible.findIndex((p) => p.name === name);
+      const li = document.querySelector<HTMLElement>(`#list-out li[data-i="${i}"]`);
+      if (li) {
+        li.classList.add('open');
+        li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+  }
+  graph.load(report.packages, t);
+}
+
+function phish(i: number) {
+  if (!trust || !graph) return;
+  const a = trust.accounts[i];
+  document.querySelectorAll('#accounts button').forEach((b, j) => b.classList.toggle('active', j === i));
+  graph.phish(a.packages);
+  const pct = Math.round((100 * a.directReach.length) / Math.max(1, trust.direct));
+  graph.onTick = (n) => {
+    $('#phish-msg').innerHTML = `If <b>${esc(a.name)}</b> is phished, <b class="t-danger">${n} of ${trust!.direct}</b> direct dependencies ship the attacker's code${n >= a.directReach.length ? ` (${pct}%)` : '…'}<br><span>Through: ${esc(a.packages.slice(0, 8).join(', '))}${a.packages.length > 8 ? '…' : ''}</span>`;
+  };
+}
+
 async function run() {
   const go = $<HTMLButtonElement>('#go');
   const includeDev = $<HTMLInputElement>('#dev').checked;
   const deep = $<HTMLInputElement>('#deep').checked;
   $('#error').hidden = true;
   $('#results').hidden = true;
+  replay = null;
   go.disabled = true;
   go.textContent = 'Checking…';
   try {
@@ -127,6 +237,7 @@ async function run() {
 
 function headline(r: ProjectReport) {
   const { danger, review } = r.counts;
+  if (replay) return replay.hijacked.verdict === 'danger' ? 'Caught. The hijacked release is flagged from its code alone, minutes after publish.' : 'Not caught.';
   if (danger) return `${danger} ${danger === 1 ? 'dependency is' : 'dependencies are'} dangerous. Don't install this as is.`;
   if (review) return `No known attacks. ${review} ${review === 1 ? 'package needs' : 'packages need'} a quick look.`;
   return 'Nothing suspicious. Every dependency checks out.';
@@ -147,6 +258,7 @@ function render() {
   r.counts = counts;
   $('#results').hidden = false;
   $('#score').innerHTML = scoreRing(score);
+  $('#score').hidden = !!replay;
   $('#score').setAttribute('aria-label', `Score ${score} out of 100`);
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
@@ -161,6 +273,8 @@ function render() {
     .map((v) => `<span class="pill p-${v}">${counts[v]} ${LABEL[v]}</span>`)
     .join('');
   $('#share').hidden = !shareQuery;
+  renderReplay();
+  renderTrust();
   $('#filters').innerHTML = (['all', 'danger', 'review', 'safe'] as const)
     .map((f) => `<button data-filter="${f}" aria-pressed="${filter === f}">${f === 'all' ? `All ${r.packages.length}` : `${LABEL[f]} ${counts[f]}`}</button>`)
     .join('');
@@ -179,7 +293,7 @@ function topReason(p: PackageReport) {
 function renderFinding(f: Finding) {
   return `<div class="finding"><span class="dot s-${f.severity}">${SEV_ICON[f.severity]}</span><div>
     <h4>${esc(f.title)}</h4><p>${esc(f.detail)}</p>
-    ${f.evidence?.length ? `<pre>${esc(f.evidence.join('\n'))}</pre>` : ''}
+    ${f.evidence?.length ? `<pre>${f.evidence.map((l) => (l.startsWith('  + ') ? `<span class="add">${esc(l)}</span>` : esc(l))).join('\n')}</pre>` : ''}
     ${f.link ? `<a href="${esc(f.link)}" target="_blank" rel="noopener">Source ↗</a>` : ''}
   </div></div>`;
 }
@@ -193,6 +307,12 @@ function renderItem(p: PackageReport, i: number) {
     p.meta.unpackedSize ? `${Math.round(p.meta.unpackedSize / 1024)} kB` : '',
     p.meta.license || '',
   ].filter(Boolean);
+  const badges = [
+    p.meta.signature === 'valid' ? 'Signed by npm' : '',
+    p.meta.integrity === 'verified' ? 'Tarball hash verified' : '',
+    p.meta.source?.status === 'verified' ? `Matches git ${String(p.meta.source.commit || '').slice(0, 7)}` : '',
+    p.meta.provenance ? 'Built by CI' : '',
+  ].filter(Boolean);
   const npm = `https://www.npmjs.com/package/${p.name}${p.version ? `/v/${p.version}` : ''}`;
   const canScan = !p.scanned && !!(p as any).manifest?.dist?.tarball;
   return `<li class="item" data-i="${i}">
@@ -205,6 +325,7 @@ function renderItem(p: PackageReport, i: number) {
     </button>
     <div class="detail">
       ${meta.length ? `<div class="meta">${meta.map((m) => `<span>${esc(m)}</span>`).join('')}</div>` : ''}
+      ${badges.length ? `<div class="badges">${badges.map((b) => `<span>✓ ${esc(b)}</span>`).join('')}</div>` : ''}
       ${p.meta.description ? `<p class="desc">${esc(p.meta.description)}</p>` : ''}
       ${p.findings.map(renderFinding).join('') || '<p class="desc">No findings.</p>'}
       <div class="links">
@@ -250,6 +371,12 @@ document.querySelector('.examples')!.addEventListener('click', (e) => {
     $<HTMLInputElement>('#repo').value = 'expressjs/express';
   }
   run();
+});
+
+document.querySelectorAll<HTMLButtonElement>('[data-replay]').forEach((b) => b.addEventListener('click', () => runReplay(b.dataset.replay!)));
+$('#accounts').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-acct]');
+  if (b) phish(Number(b.dataset.acct));
 });
 
 $('#filters').addEventListener('click', (e) => {
@@ -310,7 +437,9 @@ document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) =>
 
 // Shared links: #repo=owner/repo or #pkgs=a@1 b@2
 const params = new URLSearchParams(location.hash.slice(1));
-if (params.get('repo')) {
+if (params.get('replay')) {
+  runReplay(params.get('replay')!);
+} else if (params.get('repo')) {
   setTab('repo');
   $<HTMLInputElement>('#repo').value = params.get('repo')!;
   run();

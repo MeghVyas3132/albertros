@@ -27,6 +27,8 @@ export interface PackageMeta {
   unpackedSize?: number;
   hasInstallScript?: boolean;
   provenance?: boolean;
+  maintainers?: string[];
+  deps?: string[];
   signature?: 'valid' | 'invalid' | 'missing' | 'unknown-key';
   integrity?: 'verified' | 'mismatch';
   source?: { status: string; repo?: string; commit?: string; compared: number; matched: number; modified: number; notInGit: number };
@@ -53,6 +55,8 @@ export interface ProjectReport {
   startedAt: string;
   finishedAt: string;
   skipped: number;
+  /** True when the transitive tree was resolved by Albertros rather than read from a lockfile. */
+  expanded?: boolean;
 }
 
 export interface Progress {
@@ -64,6 +68,8 @@ export interface Progress {
 export interface AnalyzeOptions {
   deep?: boolean;
   maxPackages?: number;
+  /** Resolve the full transitive tree when the input only lists direct dependencies (package.json). */
+  expand?: boolean;
   now?: number;
   onProgress?: (p: Progress) => void;
 }

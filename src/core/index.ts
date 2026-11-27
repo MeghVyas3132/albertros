@@ -8,3 +8,7 @@ export { applyConfig, toSarif, toMarkdown } from './report.js';
 export type { AlbertrosConfig } from './report.js';
 export { verifyRegistrySignature, checkIntegrity } from './verify.js';
 export { verifyAgainstSource, githubRepo } from './source.js';
+export { replayAttack, SCENARIOS } from './replay.js';
+export type { Scenario, ReplayResult } from './replay.js';
+export { computeTrust } from './trust.js';
+export type { TrustReport, Account } from './trust.js';

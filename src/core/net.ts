@@ -84,3 +84,14 @@ export async function getDownloads(names: string[]): Promise<Map<string, number 
   });
   return out;
 }
+
+const abbrevs = new Map<string, Promise<any | null>>();
+/** Abbreviated packument (versions + dependencies only): much smaller, used to resolve ranges. */
+export function getAbbrev(name: string): Promise<any | null> {
+  let p = abbrevs.get(name);
+  if (!p) {
+    p = getJson(`${REGISTRY}/${encName(name)}`, { headers: { accept: 'application/vnd.npm.install-v1+json' } });
+    abbrevs.set(name, p);
+  }
+  return p;
+}

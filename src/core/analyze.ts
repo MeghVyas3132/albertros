@@ -1,5 +1,5 @@
 import semver from 'semver';
-import { getDownloads, getManifest, getPackument, pool } from './net.js';
+import { getAbbrev, getDownloads, getManifest, getPackument, pool } from './net.js';
 import { queryOsv } from './osv.js';
 import { installEntryFiles, scanFiles, scanInstallScript } from './scan.js';
 import { readTarball } from './tarball.js';
@@ -152,6 +152,8 @@ async function resolveOne(d: DepInput, now: number): Promise<Work> {
     hasInstallScript: hasInstall(manifest),
     provenance: !!manifest.dist?.attestations?.provenance,
     publishedAt: packument?.time?.[manifest.version],
+    maintainers: (manifest.maintainers || []).map((m: any) => (typeof m === 'string' ? m.split(' <')[0] : m?.name)).filter(Boolean),
+    deps: [...Object.keys(manifest.dependencies || {}), ...Object.keys(manifest.optionalDependencies || {})],
   };
 
   if (manifest.description === 'security holding package' || /-security$/.test(manifest.version) || /npm\/security-holder/.test(r.meta.repository || '')) {
@@ -361,21 +363,52 @@ export async function analyzeProject(source: string, deps: DepInput[], opts: Ana
   list = list.slice(0, max);
 
   let done = 0;
-  progress({ stage: 'Reading the npm registry', done, total: list.length });
-  const downloadsP = getDownloads(list.map((d) => splitAlias(d.name, d.spec).name));
-  const reports: Work[] = await pool(list, 10, async (d) => {
+  let total = list.length;
+  progress({ stage: 'Reading the npm registry', done, total });
+  const resolve = async (d: DepInput): Promise<Work> => {
     let r: Work;
     try {
       r = await resolveOne(d, now);
     } catch (e) {
       r = { name: d.name, spec: d.spec, direct: d.direct, dev: !!d.dev, verdict: 'unknown', findings: [], meta: {}, scanned: false, error: String((e as Error).message || e) };
     }
-    progress({ stage: 'Reading the npm registry', done: ++done, total: list.length });
+    progress({ stage: 'Reading the npm registry', done: ++done, total });
     return r;
-  });
+  };
+  const reports: Work[] = await pool(list, 16, resolve);
+
+  // package.json only lists direct dependencies: resolve the rest of the tree the way npm would.
+  const expand = opts.expand ?? !list.some((d) => !d.direct);
+  let expandedCount = 0;
+  if (expand) {
+    const seen = new Set(reports.map((r) => r.name));
+    let frontier = reports.filter((r) => r.manifest);
+    while (frontier.length && reports.length < max) {
+      const wanted = new Map<string, { range: string; dev: boolean }>();
+      for (const r of frontier) {
+        const deps = { ...(r.manifest.dependencies || {}), ...(r.manifest.optionalDependencies || {}) };
+        for (const [n, range] of Object.entries<string>(deps)) {
+          if (!seen.has(n) && !wanted.has(n)) wanted.set(n, { range, dev: r.dev });
+        }
+      }
+      const batch = [...wanted.entries()].slice(0, max - reports.length);
+      batch.forEach(([n]) => seen.add(n));
+      total += batch.length;
+      const next = await pool(batch, 16, async ([n, w]) => {
+        const a = await getAbbrev(n).catch(() => null);
+        const versions = Object.keys(a?.versions || {});
+        const latest = a?.['dist-tags']?.latest;
+        const v = latest && semver.satisfies(latest, w.range) ? latest : semver.maxSatisfying(versions, w.range);
+        return resolve({ name: n, spec: v || w.range, direct: false, dev: w.dev });
+      });
+      reports.push(...next);
+      expandedCount += next.length;
+      frontier = next.filter((r) => r.manifest);
+    }
+  }
 
   progress({ stage: 'Checking download counts and look-alike names', done: 0, total: 1 });
-  const downloads = await downloadsP;
+  const downloads = await getDownloads(reports.map((r) => r.name));
   for (const r of reports) {
     const dl = downloads.get(r.name);
     r.meta.weeklyDownloads = dl ?? null;
@@ -449,5 +482,5 @@ export async function analyzeProject(source: string, deps: DepInput[], opts: Ana
   }
   const packages = sortReports(reports.map(({ manifest, packument, ...rest }) => Object.defineProperty(rest, 'manifest', { value: manifest, enumerable: false }) as PackageReport));
   const { score, counts } = scoreOf(packages);
-  return { source, packages, score, counts, startedAt, finishedAt: new Date().toISOString(), skipped };
+  return { source, packages, score, counts, startedAt, finishedAt: new Date().toISOString(), skipped, expanded: expandedCount > 0 };
 }
