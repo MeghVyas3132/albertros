@@ -1,6 +1,6 @@
 # Albertros
 
-[![npm](https://img.shields.io/npm/v/albertros?color=cb3837&label=npm)](https://www.npmjs.com/package/albertros) [![ci](https://github.com/MeghVyas3132/albertros/actions/workflows/ci.yml/badge.svg)](https://github.com/MeghVyas3132/albertros/actions/workflows/ci.yml) [![GitHub Action](https://img.shields.io/badge/action-albertros--action-2088ff)](https://github.com/MeghVyas3132/albertros-action) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![npm](https://img.shields.io/npm/v/albertros?color=cb3837&label=npm)](https://www.npmjs.com/package/albertros) [![ci](https://github.com/MeghVyas3132/albertros/actions/workflows/ci.yml/badge.svg)](https://github.com/MeghVyas3132/albertros/actions/workflows/ci.yml) [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Albertros-2088ff?logo=github)](https://github.com/marketplace/actions/albertros-npm-supply-chain-check) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 **Know which npm dependency will hurt you, before `npm install` does.**
 
@@ -27,7 +27,7 @@ Plus the same cryptographic checks as `npm audit signatures`: every version's np
 |---|---|
 | **Web app** | https://albertros-rouge.vercel.app |
 | **CLI** | `npx albertros check` · [npm](https://www.npmjs.com/package/albertros) · [GitHub Packages](https://github.com/MeghVyas3132/albertros/pkgs/npm/albertros) |
-| **GitHub Action** | `uses: MeghVyas3132/albertros@main` |
+| **GitHub Action** | `uses: MeghVyas3132/albertros-action@v1` · [GitHub Marketplace](https://github.com/marketplace/actions/albertros-npm-supply-chain-check) |
 | **Recently scanned** | https://albertros-rouge.vercel.app/history (public repos checked, plus anonymous CODEFESTTHON 2026 results) |
 
 ## Try it in 30 seconds

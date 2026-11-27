@@ -7,6 +7,8 @@
 **Links**
 - Live app: https://albertros-rouge.vercel.app
 - GitHub: https://github.com/MeghVyas3132/albertros
+- npm: https://www.npmjs.com/package/albertros (`npx albertros check`)
+- GitHub Marketplace: https://github.com/marketplace/actions/albertros-npm-supply-chain-check
 - Try it: https://albertros-rouge.vercel.app/#replay=chalk and https://albertros-rouge.vercel.app/#repo=expressjs/express
 - Recently scanned + CODEFESTTHON results: https://albertros-rouge.vercel.app/history
 
@@ -48,7 +50,7 @@ It also verifies every version's npm registry signature (ECDSA P-256, the same c
 **Three ways to use it:**
 - **Web app:** paste a package.json or lockfile, or enter a GitHub repo. It runs entirely in your browser and uploads nothing.
 - **CLI:** `npx albertros check`
-- **GitHub Action:** fails the PR on danger, writes a job summary, and uploads SARIF so findings appear in GitHub's Security tab. Albertros already runs this on its own repo.
+- **GitHub Action** (listed on the GitHub Marketplace): fails the PR on danger, writes a job summary, and uploads SARIF so findings appear in GitHub's Security tab. Albertros already runs this on its own repo.
 
 Production details: a config file to allow-list packages, `--fail-on` policy, JSON/SARIF/Markdown output, retries on registry errors, 17 tests including a live test against the real chalk@5.6.1 hijack, and CI on every push plus nightly.
 
