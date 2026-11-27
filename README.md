@@ -16,7 +16,8 @@ It runs in the browser (nothing is uploaded), in your terminal, and in CI.
 
 1. **Who can push code into your app.** Albertros resolves your full dependency tree and counts every npm account that can publish into it. Express: **259 strangers**. Then it finds the one account whose stolen password reaches the most of your app (for Express, one account reaches **75% of its direct dependencies**) and animates the attack spreading through your dependency graph. On 8 Sept 2025 this exact scenario happened: one phished account, 18 packages.
 2. **Proof the package is its source code.** npm records the git commit every release was built from. Albertros downloads the tarball, fetches the same files from GitHub at that commit, and shows **the exact lines that ship to users but don't exist in the repo**. The xz backdoor and the chalk hijack both lived only in published artifacts, never in git. Pattern matchers guess whether code looks bad. This shows whether the release is what the maintainers actually wrote.
-3. **Attack replays.** One click takes the real `chalk@5.6.2` (or `@ctrl/tinycolor@4.1.0`) tarball, applies the change the Sept 2025 attackers made (an inert stand-in, never executed), and runs the normal checks on it. You watch Albertros catch the hijack from the code alone, minutes after publish, with no malware database. OSV only listed the real attack after it was reported.
+3. **Worm outbreak simulator.** Shai-Hulud, CanisterWorm and Miasma spread by stealing one token, republishing everything that account can publish, and infecting whoever runs it next. Albertros runs that worm generation by generation on your real dependency and maintainer graph (Express: one token, 5 generations, 75% of packages poisoned, 95 accounts compromised), with a slider for how likely each maintainer is to have a token exposed.
+4. **Attack replays.** One click takes the real `chalk@5.6.2` (or `@ctrl/tinycolor@4.1.0`) tarball, applies the change the Sept 2025 attackers made (an inert stand-in, never executed), and runs the normal checks on it. You watch Albertros catch the hijack from the code alone, minutes after publish, with no malware database. OSV only listed the real attack after it was reported.
 
 Plus the same cryptographic checks as `npm audit signatures`: every version's npm registry signature (ECDSA P-256) is verified, and every scanned tarball is checked against its published sha512, all in the browser with WebCrypto.
 
@@ -25,6 +26,7 @@ Plus the same cryptographic checks as `npm audit signatures`: every version's np
 | **Web app** | https://albertros-rouge.vercel.app |
 | **CLI** | `npx github:MeghVyas3132/albertros check` |
 | **GitHub Action** | `uses: MeghVyas3132/albertros@main` |
+| **Recently scanned** | https://albertros-rouge.vercel.app/history (public repos checked, plus anonymous CODEFESTTHON 2026 results) |
 
 ## Try it in 30 seconds
 

@@ -7,7 +7,8 @@
 **Links**
 - Live app: https://albertros-rouge.vercel.app
 - GitHub: https://github.com/MeghVyas3132/albertros
-- Try it: https://albertros-rouge.vercel.app/#pkgs=chalk%405.6.1%20debug%404.4.2%20lodahs%20express
+- Try it: https://albertros-rouge.vercel.app/#replay=chalk and https://albertros-rouge.vercel.app/#repo=expressjs/express
+- Recently scanned + CODEFESTTHON results: https://albertros-rouge.vercel.app/history
 
 **Tracks / tags:** Open Innovation, Automation & Productivity (devtools), Security
 
@@ -30,6 +31,7 @@ That trust keeps getting abused:
 
 - **Who can push code into your app.** It resolves your whole dependency tree and counts every npm account that can publish into it. Express: **259 strangers**. Then it finds the single account whose stolen password reaches the most of your app (one account reaches 75% of Express's direct dependencies) and animates the attack spreading through your dependency graph.
 - **Proof the package is its source code.** It downloads the published tarball, fetches the same files from GitHub at the exact commit npm says the release came from, and shows **the lines that ship to users but don't exist in git**. The xz backdoor and the chalk hijack both lived only in published artifacts.
+- **Worm outbreak simulator.** The 2025-2026 attacks (Shai-Hulud, CanisterWorm, Miasma) were worms: steal one token, republish everything that account can publish, infect whoever runs it next. Albertros runs that worm generation by generation on your real dependency and maintainer graph. Express: one stolen token, 5 generations, **222 of 297 packages (75%) poisoned, 95 accounts compromised**. A slider sets how likely each infected maintainer is to have a token exposed. We found no other tool that simulates worm spread through your own tree.
 - **Attack replays.** One click re-creates the Sept 2025 chalk hijack and the Shai-Hulud worm on the real tarballs (inert stand-in code, never executed) and catches them live, from the code alone, minutes after publish, without any malware database.
 
 On top of that, it checks every dependency for the signs of an attack and gives each one a verdict, **Danger**, **Review** or **Safe**, with the reason in plain language:
@@ -41,12 +43,14 @@ On top of that, it checks every dependency for the signs of an attack and gives 
 
 It also verifies every version's npm registry signature (ECDSA P-256, the same check as `npm audit signatures`) and every tarball's sha512, in the browser with WebCrypto.
 
+**We checked every CODEFESTTHON 2026 project with a public repo** (13 JavaScript projects, 2,729 packages; no project named): the median project trusts **166 strangers**, one phished account reaches a median **33%** of its direct dependencies, and a single worm would poison a median **44%** of its packages. Results and a live list of every public repo checked with Albertros: https://albertros-rouge.vercel.app/history
+
 **Three ways to use it:**
 - **Web app:** paste a package.json or lockfile, or enter a GitHub repo. It runs entirely in your browser and uploads nothing.
 - **CLI:** `npx github:MeghVyas3132/albertros check`
 - **GitHub Action:** fails the PR on danger, writes a job summary, and uploads SARIF so findings appear in GitHub's Security tab. Albertros already runs this on its own repo.
 
-Production details: a config file to allow-list packages, `--fail-on` policy, JSON/SARIF/Markdown output, retries on registry errors, 15 tests including a live test against the real chalk@5.6.1 hijack, and CI on every push plus nightly.
+Production details: a config file to allow-list packages, `--fail-on` policy, JSON/SARIF/Markdown output, retries on registry errors, 17 tests including a live test against the real chalk@5.6.1 hijack, and CI on every push plus nightly.
 
 ## Challenges we ran into
 
