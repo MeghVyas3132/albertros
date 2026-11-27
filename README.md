@@ -198,8 +198,6 @@ npx tsc && node dist/cli.js check .
 
 ## Roadmap
 
-- [ ] Publish `albertros` to npm so `npx albertros` works without GitHub
-- [ ] pnpm-lock.yaml and yarn.lock support
 - [ ] Diff mode for PRs: only the dependencies a PR adds or changes
 - [ ] Watch mode: webhook or email alert when a dependency you use publishes a suspicious release
 - [ ] VS Code extension that flags risky imports as you type
