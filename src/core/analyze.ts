@@ -333,7 +333,8 @@ function finalize(r: PackageReport) {
 export function scoreOf(packages: PackageReport[]): { score: number; counts: Record<Verdict, number> } {
   const counts: Record<Verdict, number> = { danger: 0, review: 0, safe: 0, unknown: 0 };
   for (const p of packages) counts[p.verdict]++;
-  const score = Math.max(0, Math.round(100 - Math.min(100, counts.danger * 25 + counts.review * 3)));
+  const total = Math.max(1, packages.length);
+  const score = Math.max(0, Math.round(100 - counts.danger * 25 - Math.min(45, (150 * counts.review) / total)));
   return { score, counts };
 }
 
@@ -417,9 +418,9 @@ export async function analyzeProject(source: string, deps: DepInput[], opts: Ana
     if (squat && !holding && (dl == null || dl < 50_000)) {
       r.findings.push({
         code: 'typosquat',
-        severity: dl == null || dl < 5_000 ? 'danger' : 'review',
+        severity: dl != null && dl < 5_000 ? 'danger' : 'review',
         title: `Name imitates "${squat}"`,
-        detail: `One typo away from a hugely popular package, with ${dl == null ? 'almost no' : dl.toLocaleString('en-US')} downloads a week. Typosquats steal installs from people who mistype.`,
+        detail: `One typo away from a hugely popular package, with ${dl == null ? 'an unknown number of' : dl.toLocaleString('en-US')} downloads a week. Typosquats steal installs from people who mistype.`,
         link: `https://www.npmjs.com/package/${squat}`,
       });
     } else if (squat && holding) {

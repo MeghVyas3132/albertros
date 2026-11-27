@@ -50,6 +50,9 @@ test('install scripts: network is danger, node-gyp is info, other is review', ()
   assert.equal(scanInstallScript({ install: 'node-gyp rebuild' })[0].severity, 'info');
   assert.equal(scanInstallScript({ postinstall: 'node scripts/setup.js' })[0].severity, 'review');
   assert.deepEqual(scanInstallScript({ test: 'jest' }), []);
+  assert.equal(scanInstallScript({ postinstall: `node -e "try{require('./postinstall')}catch(e){}"` })[0].severity, 'review');
+  assert.equal(scanInstallScript({ postinstall: `node -e "require('child_process').exec('x')"` })[0].severity, 'danger');
+  assert.deepEqual(installEntryFiles({ postinstall: `node -e "try{require('./postinstall')}catch(e){}"` }), ['postinstall.js']);
   assert.deepEqual(installEntryFiles({ postinstall: 'node ./scripts/setup.js' }), ['scripts/setup.js']);
 });
 
@@ -61,6 +64,11 @@ test('typosquats', () => {
   assert.equal(typosquatOf('express'), null);
   assert.equal(typosquatOf('react-dom'), null);
   assert.equal(typosquatOf('zod'), null);
+  assert.equal(typosquatOf('@wizardconnect/core'), null);
+  assert.equal(typosquatOf('@vitest/utils'), null);
+  assert.equal(typosquatOf('@types/lodash'), null);
+  assert.equal(typosquatOf('@babe1/core'), '@babel/core');
+  assert.equal(typosquatOf('utils'), null);
 });
 
 test('parses package.json, lockfile v3 and plain lists', () => {
@@ -175,4 +183,75 @@ test('github repo parsing', () => {
   assert.deepEqual(githubRepo({ repository: 'git://github.com/debug-js/debug.git' }), { owner: 'debug-js', repo: 'debug', dir: '' });
   assert.deepEqual(githubRepo({ repository: { url: 'https://github.com/a/b', directory: 'packages/x' } }), { owner: 'a', repo: 'b', dir: 'packages/x' });
   assert.equal(githubRepo({ repository: 'https://gitlab.com/a/b' }), null);
+});
+
+import { parsePnpmLock, parseYarnLock } from '../dist/core/index.js';
+
+test('parses pnpm-lock.yaml v9 with importers and peer suffixes', () => {
+  const lock = `lockfileVersion: '9.0'
+
+importers:
+
+  .: {}
+
+  apps/api:
+    dependencies:
+      hono:
+        specifier: 4.10.4
+        version: 4.10.4
+      settled-core:
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+packages:
+
+  '@hono/node-server@1.19.5':
+    resolution: {integrity: sha512-x}
+
+  hono@4.10.4:
+    resolution: {integrity: sha512-y}
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-z}
+
+snapshots:
+
+  '@hono/node-server@1.19.5(hono@4.10.4)':
+    dependencies:
+      hono: 4.10.4
+`;
+  const p = parsePnpmLock(lock);
+  assert.deepEqual(p.deps.map((d) => `${d.name}@${d.spec}:${d.direct ? 'd' : 't'}${d.dev ? 'v' : ''}`), ['@hono/node-server@1.19.5:t', 'hono@4.10.4:d', 'typescript@5.9.3:dv']);
+  assert.equal(parsePnpmLock(lock, { includeDev: false }).deps.length, 2);
+});
+
+test('parses yarn.lock classic and berry', () => {
+  const v1 = `# yarn lockfile v1
+
+"@babel/core@^7.0.0", "@babel/core@^7.1.0":
+  version "7.24.0"
+  resolved "https://registry.yarnpkg.com/@babel/core/-/core-7.24.0.tgz"
+
+lodash@^4.17.21:
+  version "4.17.21"
+
+"eslint-v7@npm:eslint@^7.7.0":
+  version "7.32.0"
+`;
+  assert.deepEqual(parseYarnLock(v1, new Set(['lodash'])).deps.map((d) => `${d.name}@${d.spec}:${d.direct}`), ['@babel/core@7.24.0:false', 'lodash@4.17.21:true', 'eslint@7.32.0:false']);
+  const berry = `__metadata:
+  version: 8
+
+"lodash@npm:^4.17.21":
+  version: 4.17.21
+  resolution: "lodash@npm:4.17.21"
+
+"my-app@workspace:.":
+  version: 0.0.0-use.local
+`;
+  assert.deepEqual(parseYarnLock(berry).deps.map((d) => `${d.name}@${d.spec}`), ['lodash@4.17.21']);
 });

@@ -180,6 +180,7 @@ export function installEntryFiles(scripts: Record<string, string> = {}): string[
     const s = scripts[k];
     if (!s) continue;
     for (const m of s.matchAll(/(?:node|bun|sh|bash)\s+(?:-[a-z-]+\s+)*([\w./-]+\.(?:c?js|mjs|sh))/g)) out.push(m[1].replace(/^\.\//, ''));
+    for (const m of s.matchAll(/require\(\s*\\?['"]\.\/([\w./-]+?)\\?['"]\s*\)/g)) out.push(/\.\w+$/.test(m[1]) ? m[1] : m[1] + '.js');
   }
   return out;
 }
@@ -191,7 +192,8 @@ export function scanInstallScript(scripts: Record<string, string> = {}): Finding
   const cmds = entries.map((k) => `${k}: ${scripts[k]}`);
   const joined = entries.map((k) => scripts[k]).join(' && ');
   const native = /^(node-gyp(-build)? rebuild|node-gyp-build|prebuild-install( \|\| node-gyp rebuild)?.*|node install\.js|node-pre-gyp install.*)$/;
-  if (/(curl|wget)\s|https?:\/\/|powershell|\beval\b|base64\s+(-d|--decode)|node\s+-e\s/.test(joined)) {
+  const inlineBad = /node\s+(-e|--eval|-p)\s[^]*?(https?:|child_process|Buffer\.from|atob|eval|\.exec\()/.test(joined);
+  if (/(curl|wget)\s|https?:\/\/|powershell|\beval\b|base64\s+(-d|--decode)/.test(joined.replace(/node\s+(-e|--eval|-p)\s+("[^"]*"|'[^']*')/g, '')) || inlineBad) {
     findings.push({
       code: 'install-script-network',
       severity: 'danger',

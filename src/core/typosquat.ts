@@ -44,21 +44,27 @@ function damerau(a: string, b: string, max: number): number {
 
 const norm = (s: string) => s.replace(/^@[^/]+\//, '').replace(/[-_.]/g, '').replace(/js$/, '');
 
-/** Returns the popular package this name imitates, if any. */
+const POPULAR_SCOPES = ['babel', 'types', 'angular', 'aws-sdk', 'nestjs', 'tanstack', 'reduxjs', 'prisma', 'solana', 'emotion', 'faker-js', 'vue', 'sveltejs', 'testing-library', 'typescript-eslint', 'mui', 'nextui-org', 'radix-ui', 'vitest', 'storybook', 'firebase', 'google-cloud', 'azure', 'octokit', 'apollo', 'trpc', 'supabase', 'vercel', 'ethersproject', 'openzeppelin', 'chakra-ui', 'headlessui', 'sentry', 'opentelemetry'];
+
+/** Returns the popular package (or scope) this name imitates, if any. */
 export function typosquatOf(name: string): string | null {
   if (POPULAR_SET.has(name)) return null;
-  const bare = name.replace(/^@[^/]+\//, '');
-  for (const p of POPULAR) {
-    const pb = p.replace(/^@[^/]+\//, '');
-    if (pb.length < 4) continue;
-    // "@evil/lodash" or "lodash-js" style copies
-    if (name !== p && (norm(name) === norm(p)) && bare.length >= 4) return p;
-    const max = pb.length >= 9 ? 2 : 1;
-    if (Math.abs(bare.length - pb.length) <= max && bare !== pb && damerau(bare, pb, max) <= max) {
-      // Ignore legit families like "react-dom" vs "react-dos": both must be close but not a known name
-      if (POPULAR_SET.has(bare)) continue;
-      return p;
+  if (name.startsWith('@')) {
+    // Only the scope owner can publish inside a scope, so look-alike names *inside* a scope are fine.
+    // What is dangerous is a scope that is itself a misspelling of a well-known one.
+    const scope = name.slice(1, name.indexOf('/'));
+    if (POPULAR_SCOPES.includes(scope) || scope.length < 4) return null;
+    for (const ps of POPULAR_SCOPES) {
+      if (Math.abs(ps.length - scope.length) <= 1 && damerau(scope, ps, 1) <= 1) return `@${ps}${name.slice(name.indexOf('/'))}`;
     }
+    return null;
+  }
+  for (const p of POPULAR) {
+    if (p.startsWith('@')) continue;
+    if (p.length < 5) continue;
+    if (norm(name) === norm(p) && name.length >= 5) return p;
+    const max = p.length >= 9 ? 2 : 1;
+    if (Math.abs(name.length - p.length) <= max && damerau(name, p, max) <= max) return p;
   }
   return null;
 }

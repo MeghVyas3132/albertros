@@ -106,7 +106,7 @@ For scanned packages hosted on GitHub, the tarball is compared file by file with
 `computeTrust()` builds the dependency graph (from the lockfile, or by resolving `package.json` the way npm would), collects every maintainer account, and for each account computes which of your direct dependencies would deliver its code if it were compromised. The CLI prints the summary; the web app draws the graph and animates the attack.
 
 ### Score
-`100 − 25 × danger − 3 × review`, floored at 0.
+`100 − 25 × danger − min(45, 150 × share of packages needing review)`, floored at 0. One dangerous package costs a quarter of the score; reviews scale with the size of the project.
 
 ## CLI
 
