@@ -14,13 +14,13 @@ It runs in the browser (nothing is uploaded), in your terminal, and in CI.
 
 | | |
 |---|---|
-| **Web app** | _deploy link_ |
+| **Web app** | https://albertros-rouge.vercel.app |
 | **CLI** | `npx github:MeghVyas3132/albertros check` |
 | **GitHub Action** | `uses: MeghVyas3132/albertros@main` |
 
 ## Try it in 30 seconds
 
-1. Open the web app and click **A risky project**. You get 6 dangerous dependencies, each with its reason: npm takedowns, known-malicious versions, a name that anyone could register.
+1. Open [albertros-rouge.vercel.app](https://albertros-rouge.vercel.app) and click **A risky project**. You get 6 dangerous dependencies, each with its reason: npm takedowns, known-malicious versions, a name that anyone could register.
 2. Click **The Sept 2025 chalk/debug hijack** to see the real compromised versions flagged.
 3. Paste your own `package.json` or `package-lock.json`, or enter any public GitHub repo.
 
