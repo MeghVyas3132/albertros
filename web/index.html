@@ -3,188 +3,224 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Albertros · npm supply-chain checker</title>
-    <meta name="description" content="Know which npm dependency will hurt you, before npm install does. Checks takedowns, malware databases, release history and the code itself, in your browser." />
-    <meta property="og:title" content="Albertros · npm supply-chain checker" />
-    <meta property="og:description" content="Know which npm dependency will hurt you, before npm install does." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2316161a'/%3E%3Cpath d='M5 18c5-1 8-5 11-9 3 4 6 8 11 9-4 1-7 0-11-3-4 3-7 4-11 3z' fill='%23f4f1ea'/%3E%3C/svg%3E" />
+    <title>Albertros · Catch dangerous packages before they catch you</title>
+    <meta name="description" content="Drop your GitHub link. We'll flag every dangerous package before it ships. Free, instant, runs entirely in your browser." />
+    <meta property="og:title" content="Albertros · Catch dangerous packages before they catch you" />
+    <meta property="og:description" content="Drop your GitHub link. We flag dangerous packages before they ship. Free, instant, no sign-up." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M5 18c5-1 8-5 11-9 3 4 6 8 11 9-4 1-7 0-11-3-4 3-7 4-11 3z' fill='%23fff'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <header class="top">
-      <a class="brand" href="./">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" /><path d="M5 18c5-1 8-5 11-9 3 4 6 8 11 9-4 1-7 0-11-3-4 3-7 4-11 3z" /></svg>
-        <span>Albertros</span>
-      </a>
-      <nav>
-        <a href="./history">Recently scanned</a>
-        <a href="#how">How it works</a>
-        <a href="#ci">CLI &amp; CI</a>
-        <a href="https://github.com/MeghVyas3132/albertros" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </header>
+    <div class="wrapper">
 
-    <main>
-      <section class="hero">
-        <h1>Know which dependency will hurt you, <em>before</em> <code>npm install</code> does.</h1>
-        <p class="lede">
-          Albertros checks every package against npm's own takedowns, the OSV malware database, the signals of a hijacked release, and the published code itself.
-          It runs in your browser and uploads nothing.
-        </p>
-      </section>
+      <header class="nav">
+        <a class="brand" href="./">Albertros</a>
+        <nav class="nav-links">
+          <a href="./history">History</a>
+          <a href="#how">How it works</a>
+          <a href="#ci">CLI &amp; CI</a>
+          <a href="https://github.com/MeghVyas3132/albertros" target="_blank" rel="noopener">GitHub</a>
+          <span class="status-dot" title="All systems go"></span>
+        </nav>
+      </header>
 
-      <section class="pain" aria-label="Why this matters">
-        <article>
-          <time>8 Sept 2025</time>
-          <h2>One phished password, 18 packages</h2>
-          <p>chalk, debug and 16 more shipped a crypto stealer. About 2.6 billion weekly downloads.</p>
-        </article>
-        <article>
-          <time>15 Sept 2025</time>
-          <h2>A worm that spreads through npm</h2>
-          <p>Shai-Hulud stole tokens on install and republished 500+ packages with itself inside.</p>
-        </article>
-        <article>
-          <time>Both times</time>
-          <h2><code>npm audit</code> said nothing</h2>
-          <p>It only knows about bugs someone already reported, not attacks happening right now.</p>
-        </article>
-      </section>
+      <main>
 
-      <section class="card input" aria-label="What to check">
-        <div class="tabs" role="tablist">
-          <button role="tab" data-tab="repo" aria-selected="true">GitHub repo</button>
-          <button role="tab" data-tab="paste" aria-selected="false">Paste package.json or lockfile</button>
-          <button role="tab" data-tab="list" aria-selected="false">Packages</button>
-        </div>
-        <form id="form" autocomplete="off">
-          <div class="pane" data-pane="repo">
-            <input id="repo" type="text" placeholder="owner/repo or https://github.com/owner/repo" spellcheck="false" />
-          </div>
-          <div class="pane" data-pane="paste" hidden>
-            <textarea id="paste" rows="8" placeholder='{ "dependencies": { "express": "^4.21.2" } }' spellcheck="false"></textarea>
-          </div>
-          <div class="pane" data-pane="list" hidden>
-            <input id="list" type="text" placeholder="chalk@5.6.1 lodash express@4" spellcheck="false" />
-          </div>
-          <div class="row">
-            <label class="check"><input type="checkbox" id="dev" checked /> Include devDependencies</label>
-            <label class="check"><input type="checkbox" id="deep" /> Scan the code of every package</label>
-            <button type="submit" class="go" id="go">Check</button>
-          </div>
-        </form>
-        <div class="examples">
-          <span>Try:</span>
-          <button data-replay="chalk" class="hot">Replay the chalk hijack</button>
-          <button data-replay="shai-hulud" class="hot">Replay the Shai-Hulud worm</button>
-          <button data-example="express">expressjs/express</button>
-          <button data-example="risky">A risky project</button>
-          <button data-example="hijack">Real hijacked versions</button>
-        </div>
-        <p class="privacy">Everything runs in your browser. Public GitHub repos you check are listed on <a href="./history">Recently scanned</a> with summary numbers only.</p>
-      </section>
+        <!-- HERO SPLIT: left=type, right=highlighted form -->
+        <div class="hero-split">
 
-      <section id="progress" class="progress" hidden>
-        <div class="bar"><i></i></div>
-        <p id="stage">Starting…</p>
-      </section>
-
-      <p id="error" class="error" hidden></p>
-
-      <section id="results" hidden>
-        <div class="summary card">
-          <div class="score" id="score"></div>
-          <div class="sumtext">
-            <p class="source" id="source"></p>
-            <h2 id="headline"></h2>
-            <div class="counts" id="counts"></div>
-          </div>
-          <div class="actions">
-            <button id="share">Copy share link</button>
-            <button id="download">Download JSON</button>
-          </div>
-        </div>
-        <div class="replay card" id="replay" hidden></div>
-
-        <div class="trust card" id="trust" hidden>
-          <div class="trust-head">
-            <div>
-              <h2 id="trust-title"></h2>
-              <p id="trust-sub" class="sub"></p>
+          <section class="hero-left">
+            <div class="hero-titles">
+              <div class="title-row">
+                <h1>SCAN</h1>
+                <span class="plus">+</span>
+              </div>
+              <h1 class="title-indent">YOUR</h1>
+              <h1>SUPPLY CHAIN.</h1>
             </div>
-            <div class="stats" id="trust-stats"></div>
-          </div>
-          <div class="trust-body">
-            <div class="graph-wrap">
-              <canvas id="graph" aria-label="Dependency graph"></canvas>
-              <div class="tip" id="tip" hidden></div>
-              <div class="legend"><span><i class="lg-safe"></i>package</span><span><i class="lg-review"></i>review</span><span><i class="lg-danger"></i>danger / compromised</span></div>
+            <p class="hero-lede">
+              Drop your GitHub link. We flag every dangerous<br />
+              package before it touches your machine or your users.<br />
+              Free. No sign-up. Takes seconds.
+            </p>
+          </section>
+
+          <!-- HIGHLIGHTED FORM PANEL -->
+          <section class="hero-right" aria-label="What to check">
+            <h2 class="panel-headline">Check your repo<br>before it becomes<br>tomorrow's breach.</h2>
+            <p class="panel-label">Pick how you want to scan_</p>
+
+            <div class="tabs" role="tablist">
+              <button role="tab" data-tab="repo" aria-selected="true">GitHub repo</button>
+              <button role="tab" data-tab="paste" aria-selected="false">Paste package list</button>
+              <button role="tab" data-tab="list" aria-selected="false">Package names</button>
             </div>
-            <div class="accounts">
-              <h3>Weakest links</h3>
-              <p class="hint">Pick an account to see what one stolen password does to your app.</p>
-              <ol id="accounts"></ol>
-              <p class="phish-msg" id="phish-msg"></p>
-              <div class="worm">
-                <h3>Worm outbreak</h3>
-                <p class="hint">A Shai-Hulud style worm steals one token, republishes everything that account can publish, then infects the maintainers who run those packages. Generation by generation, on your real tree.</p>
-                <label class="slider">Chance an infected maintainer's token is exposed <output id="worm-p-out">100%</output>
-                  <input type="range" id="worm-p" min="10" max="100" step="10" value="100" />
-                </label>
-                <button id="worm-go" class="worm-go">Release a worm from <b id="worm-from"></b></button>
-                <p class="phish-msg" id="worm-msg"></p>
+
+            <form id="form" autocomplete="off">
+              <div class="pane" data-pane="repo">
+                <div class="input-row">
+                  <span class="cursor">&gt;</span>
+                  <input id="repo" type="text" placeholder="owner/repo or github url" spellcheck="false" />
+                </div>
+              </div>
+              <div class="pane" data-pane="paste" hidden>
+                <textarea id="paste" rows="7" placeholder='{ "dependencies": { "express": "^4.21.2" } }' spellcheck="false"></textarea>
+              </div>
+              <div class="pane" data-pane="list" hidden>
+                <div class="input-row">
+                  <span class="cursor">&gt;</span>
+                  <input id="list" type="text" placeholder="chalk@5.6.1 lodash express@4" spellcheck="false" />
+                </div>
+              </div>
+              <div class="form-controls">
+                <label class="check"><input type="checkbox" id="dev" checked /> Include dev packages</label>
+                <label class="check"><input type="checkbox" id="deep" /> Deep scan (slower)</label>
+                <button type="submit" class="go" id="go">Execute</button>
+              </div>
+            </form>
+
+            <div class="examples">
+              <span>Try_</span>
+              <button data-replay="chalk" class="hot">Replay chalk hijack</button>
+              <button data-replay="shai-hulud" class="hot">Replay Shai-Hulud worm</button>
+              <button data-example="express">expressjs/express</button>
+              <button data-example="risky">Risky project</button>
+              <button data-example="hijack">Hijacked versions</button>
+            </div>
+
+            <p class="privacy">Everything runs in your browser — nothing is sent to our servers. Public GitHub repos you check are listed on <a href="./history">Recently scanned</a> with summary numbers only, never your code.</p>
+          </section>
+
+        </div>
+
+        <!-- PAIN STRIP -->
+        <section class="pain" aria-label="Why this matters">
+          <article>
+            <time>8 Sept 2025</time>
+            <h2>One stolen password. 2.6 billion downloads, all infected.</h2>
+            <p>An attacker hacked one developer account and pushed a crypto-stealer into chalk, debug and 16 other packages your project probably uses.</p>
+          </article>
+          <article>
+            <time>15 Sept 2025</time>
+            <h2>Malware that silently cloned itself into 500+ packages.</h2>
+            <p>The Shai-Hulud worm stole login tokens and republished itself into hundreds of packages. Developers had no idea until it was too late.</p>
+          </article>
+          <article>
+            <time>Both times</time>
+            <h2><code>npm audit</code> returned zero warnings. Zero.</h2>
+            <p>The industry-standard tool saw nothing. Albertros catches what it misses — new attacks, suspicious code, and hijacked releases in real time.</p>
+          </article>
+        </section>
+
+        <!-- PROGRESS -->
+        <section id="progress" class="progress" hidden>
+          <div class="bar"><i></i></div>
+          <p id="stage">Starting…</p>
+        </section>
+
+        <p id="error" class="error" hidden></p>
+
+        <!-- RESULTS -->
+        <section id="results" hidden>
+          <div class="summary card">
+            <div class="score" id="score"></div>
+            <div class="sumtext">
+              <p class="source" id="source"></p>
+              <h2 id="headline"></h2>
+              <div class="counts" id="counts"></div>
+            </div>
+            <div class="actions">
+              <button id="share">Copy share link</button>
+              <button id="download">Download JSON</button>
+            </div>
+          </div>
+          <div class="replay card" id="replay" hidden></div>
+
+          <div class="trust card" id="trust" hidden>
+            <div class="trust-head">
+              <div>
+                <h2 id="trust-title"></h2>
+                <p id="trust-sub" class="sub"></p>
+              </div>
+              <div class="stats" id="trust-stats"></div>
+            </div>
+            <div class="trust-body">
+              <div class="graph-wrap">
+                <canvas id="graph" aria-label="Dependency graph"></canvas>
+                <div class="tip" id="tip" hidden></div>
+                <div class="legend">
+                  <span><i class="lg-safe"></i>safe package</span>
+                  <span><i class="lg-review"></i>needs a look</span>
+                  <span><i class="lg-danger"></i>dangerous</span>
+                </div>
+              </div>
+              <div class="accounts">
+                <h3>Riskiest people</h3>
+                <p class="hint">Select a person below to see how much damage one stolen password could do to your app.</p>
+                <ol id="accounts"></ol>
+                <p class="phish-msg" id="phish-msg"></p>
+                <div class="worm">
+                  <h3>Simulate an outbreak</h3>
+                  <p class="hint">Watch how malware would spread through your project if one person's account got hacked — package by package, person by person.</p>
+                  <label class="slider">Odds that each infected person's account gets exposed <output id="worm-p-out">100%</output>
+                    <input type="range" id="worm-p" min="10" max="100" step="10" value="100" />
+                  </label>
+                  <button id="worm-go" class="worm-go">Simulate outbreak starting from <b id="worm-from"></b></button>
+                  <p class="phish-msg" id="worm-msg"></p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="filters">
-          <div class="seg" id="filters"></div>
-          <input id="search" type="search" placeholder="Filter packages" />
-        </div>
-        <ul class="list" id="list-out"></ul>
-      </section>
+          <div class="filters">
+            <div class="seg" id="filters"></div>
+            <input id="search" type="search" placeholder="Search packages" />
+          </div>
+          <ul class="list" id="list-out"></ul>
+        </section>
 
-      <section id="how" class="how">
-        <h2>Four checks, one verdict</h2>
-        <p class="sub">Every package gets <b class="t-danger">Danger</b>, <b class="t-review">Review</b> or <b class="t-safe">Safe</b>, with the reason in plain language.</p>
-        <div class="grid">
-          <article>
-            <span class="n">01</span>
-            <h3>Takedowns and missing names</h3>
-            <p>Names npm replaced with a security placeholder, versions pulled from the registry, and private-looking names that don't exist on npm, which anyone could register (dependency confusion).</p>
-          </article>
-          <article>
-            <span class="n">02</span>
-            <h3>Known malware and vulnerabilities</h3>
-            <p>Every exact version is matched against <a href="https://osv.dev" target="_blank" rel="noopener">OSV</a>, which includes the OpenSSF malicious-packages feed and GitHub advisories.</p>
-          </article>
-          <article>
-            <span class="n">03</span>
-            <h3>Signs of a hijacked release</h3>
-            <p>A first release by a new account, an install script that wasn't there before, CI provenance that suddenly stops, a sudden size jump, or a release only hours old. The chalk/debug and Shai-Hulud attacks set off several of these at once.</p>
-          </article>
-          <article>
-            <span class="n">04</span>
-            <h3>The code itself</h3>
-            <p>Downloads the published tarball and looks for what real attacks do: scripts that run on install and reach the internet, hidden <code>eval</code>, token and SSH-key theft, wallet hijacking, obfuscation.</p>
-          </article>
-        </div>
-      </section>
+        <!-- HOW IT WORKS -->
+        <section id="how" class="how">
+          <h2>Four checks. One verdict. No jargon.</h2>
+          <p class="sub">Every package gets <b class="t-danger">Danger</b>, <b class="t-review">Review</b> or <b class="t-safe">Safe</b> — with a plain-English reason so anyone on your team understands it.</p>
+          <div class="grid">
+            <article>
+              <span class="n">01</span>
+              <h3>Packages that were pulled or faked</h3>
+              <p>Checks if a package was removed by npm for being unsafe, or if someone created a look-alike name to trick you into installing theirs instead of the real one.</p>
+            </article>
+            <article>
+              <span class="n">02</span>
+              <h3>Matches against a global threat list</h3>
+              <p>Every package is cross-checked against a worldwide database of reported malware and security issues, updated continuously by the security community.</p>
+            </article>
+            <article>
+              <span class="n">03</span>
+              <h3>Looks like a package was taken over</h3>
+              <p>Flags packages that suddenly changed owners, gained new powers they didn't have before, or were published in a way that matches how past real-world attacks unfolded.</p>
+            </article>
+            <article>
+              <span class="n">04</span>
+              <h3>What the code actually does</h3>
+              <p>Reads the real package code and looks for things no legitimate package should do — like stealing passwords, running hidden commands, or secretly talking to outside servers.</p>
+            </article>
+          </div>
+        </section>
 
-      <section id="ci" class="ci">
-        <div>
-          <h2>Same engine in your terminal and CI</h2>
-          <p class="sub">Fails the build when a dependency is dangerous. Exit code 1 on danger, 0 when clean.</p>
-        </div>
-        <div class="code">
-          <div class="codehead"><span>Terminal</span><button data-copy="cli">Copy</button></div>
-          <pre id="cli">npx github:MeghVyas3132/albertros check</pre>
-          <div class="codehead"><span>.github/workflows/deps.yml</span><button data-copy="gha">Copy</button></div>
-          <pre id="gha">name: dependency check
+        <!-- CI/CLI -->
+        <section id="ci" class="ci">
+          <div>
+            <h2>Block threats automatically. Every single build.</h2>
+            <p class="sub">One line in your pipeline. If anything dangerous is found, the build stops — before it ever reaches your team or your users. Zero manual effort.</p>
+          </div>
+          <div class="code">
+            <div class="codehead"><span>Terminal</span><button data-copy="cli">Copy</button></div>
+            <pre id="cli">npx github:MeghVyas3132/albertros check</pre>
+            <div class="codehead"><span>.github/workflows/deps.yml</span><button data-copy="gha">Copy</button></div>
+            <pre id="gha">name: dependency check
 on: [pull_request]
 jobs:
   albertros:
@@ -192,14 +228,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: MeghVyas3132/albertros@main</pre>
-        </div>
-      </section>
-    </main>
+          </div>
+        </section>
 
-    <footer>
-      <span>Albertros · MIT · data from the npm registry, npm downloads API and OSV.dev</span>
-      <span>Built at CODEFESTTHON 2026</span>
-    </footer>
+      </main>
+
+      <footer>
+        <span>Albertros · Free &amp; open source · Built to catch what <code>npm audit</code> misses</span>
+        <span>Built at CODEFESTTHON 2026 🏆</span>
+      </footer>
+
+    </div>
 
     <script type="module" src="./main.ts"></script>
   </body>

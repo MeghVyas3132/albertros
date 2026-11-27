@@ -5,57 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Recently scanned · Albertros</title>
     <meta name="description" content="Public GitHub repos checked with Albertros, and what we found at CODEFESTTHON 2026." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2316161a'/%3E%3Cpath d='M5 18c5-1 8-5 11-9 3 4 6 8 11 9-4 1-7 0-11-3-4 3-7 4-11 3z' fill='%23f4f1ea'/%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23000'/%3E%3Cpath d='M5 18c5-1 8-5 11-9 3 4 6 8 11 9-4 1-7 0-11-3-4 3-7 4-11 3z' fill='%23fff'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <header class="top">
-      <a class="brand" href="./">
-        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" /><path d="M5 18c5-1 8-5 11-9 3 4 6 8 11 9-4 1-7 0-11-3-4 3-7 4-11 3z" /></svg>
-        <span>Albertros</span>
-      </a>
-      <nav>
-        <a href="./">Check a project</a>
-        <a href="./history" aria-current="page">Recently scanned</a>
-        <a href="https://github.com/MeghVyas3132/albertros" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </header>
-    <main>
-      <section class="hero hero-sm">
-        <h1>Recently scanned</h1>
-        <p class="lede">Public GitHub repos people have checked with Albertros. Only public repos are listed, with summary numbers, never the code or pasted files.</p>
-      </section>
+    <div class="wrapper">
 
-      <section class="card cft" id="cft" hidden>
-        <div class="cft-head">
-          <div>
-            <time>CODEFESTTHON 2026</time>
-            <h2 id="cft-title"></h2>
-            <p class="sub" id="cft-sub"></p>
+      <header class="nav">
+        <a class="brand" href="./">Albertros</a>
+        <nav class="nav-links">
+          <a href="./">Check a project</a>
+          <a href="./history" aria-current="page">Recently scanned</a>
+          <a href="https://github.com/MeghVyas3132/albertros" target="_blank" rel="noopener">GitHub</a>
+          <span class="status-dot" title="All systems go"></span>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero-sm">
+          <h1>Recently scanned</h1>
+          <p class="hero-lede">Public GitHub repos people have checked with Albertros. Only public repos are listed,<br />with summary numbers — never the code or pasted files.</p>
+        </section>
+
+        <section class="card cft" id="cft" hidden>
+          <div class="cft-head">
+            <div>
+              <time>CODEFESTTHON 2026</time>
+              <h2 id="cft-title"></h2>
+              <p class="sub" id="cft-sub"></p>
+            </div>
           </div>
-        </div>
-        <div class="cft-stats" id="cft-stats"></div>
-        <div class="cft-chart">
-          <p class="hint">Each bar is one project (unnamed): npm accounts that can push code into it.</p>
-          <div class="bars" id="cft-bars"></div>
-        </div>
-      </section>
+          <div class="cft-stats" id="cft-stats"></div>
+          <div class="cft-chart">
+            <p class="hint">Each bar is one project (unnamed): npm accounts that can push code into it.</p>
+            <div class="bars" id="cft-bars"></div>
+          </div>
+        </section>
 
-      <section class="totals" id="totals"></section>
-      <div class="card hist">
-        <table>
-          <thead><tr><th>Repository</th><th>Score</th><th>Strangers</th><th>One account reaches</th><th>Worm reaches</th><th>Findings</th><th>Checked</th></tr></thead>
-          <tbody id="rows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
-        </table>
-      </div>
-    </main>
-    <footer>
-      <span>Albertros · MIT · data from the npm registry, npm downloads API and OSV.dev</span>
-      <span>Built at CODEFESTTHON 2026</span>
-    </footer>
+        <section class="totals" id="totals"></section>
+
+        <div class="hist">
+          <table>
+            <thead>
+              <tr>
+                <th>Repository</th>
+                <th>Score</th>
+                <th>Strangers</th>
+                <th>One account reaches</th>
+                <th>Worm reaches</th>
+                <th>Findings</th>
+                <th>Checked</th>
+              </tr>
+            </thead>
+            <tbody id="rows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </main>
+
+      <footer>
+        <span>Albertros · MIT · data from npm, npm downloads API &amp; OSV.dev</span>
+        <span>Built at CODEFESTTHON 2026</span>
+      </footer>
+
+    </div>
     <script type="module" src="./history.ts"></script>
   </body>
 </html>
