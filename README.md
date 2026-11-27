@@ -24,7 +24,7 @@ Plus the same cryptographic checks as `npm audit signatures`: every version's np
 | | |
 |---|---|
 | **Web app** | https://albertros-rouge.vercel.app |
-| **CLI** | `npx github:MeghVyas3132/albertros check` |
+| **CLI** | `npx albertros check` |
 | **GitHub Action** | `uses: MeghVyas3132/albertros@main` |
 | **Recently scanned** | https://albertros-rouge.vercel.app/history (public repos checked, plus anonymous CODEFESTTHON 2026 results) |
 
@@ -113,9 +113,9 @@ For scanned packages hosted on GitHub, the tarball is compared file by file with
 ## CLI
 
 ```bash
-npx github:MeghVyas3132/albertros check                 # ./package-lock.json or ./package.json
-npx github:MeghVyas3132/albertros check expressjs/express
-npx github:MeghVyas3132/albertros check chalk@5.6.1 lodash
+npx albertros check                 # ./package-lock.json or ./package.json
+npx albertros check expressjs/express
+npx albertros check chalk@5.6.1 lodash
 ```
 
 | Option | |

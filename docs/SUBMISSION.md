@@ -47,7 +47,7 @@ It also verifies every version's npm registry signature (ECDSA P-256, the same c
 
 **Three ways to use it:**
 - **Web app:** paste a package.json or lockfile, or enter a GitHub repo. It runs entirely in your browser and uploads nothing.
-- **CLI:** `npx github:MeghVyas3132/albertros check`
+- **CLI:** `npx albertros check`
 - **GitHub Action:** fails the PR on danger, writes a job summary, and uploads SARIF so findings appear in GitHub's Security tab. Albertros already runs this on its own repo.
 
 Production details: a config file to allow-list packages, `--fail-on` policy, JSON/SARIF/Markdown output, retries on registry errors, 17 tests including a live test against the real chalk@5.6.1 hijack, and CI on every push plus nightly.
