@@ -12,3 +12,5 @@ export { replayAttack, SCENARIOS } from './replay.js';
 export type { Scenario, ReplayResult } from './replay.js';
 export { computeTrust } from './trust.js';
 export type { TrustReport, Account } from './trust.js';
+export { buildWorm } from './worm.js';
+export type { WormModel, WormRun, WormGeneration } from './worm.js';

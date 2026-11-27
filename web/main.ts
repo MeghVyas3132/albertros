@@ -1,5 +1,5 @@
-import { analyzeProject, computeTrust, fetchGithub, parseInput, parseList, replayAttack, scanPackageCode, scoreOf, sortReports } from '../src/core/index.js';
-import type { Finding, PackageReport, ProjectReport, ReplayResult, TrustReport, Verdict } from '../src/core/index.js';
+import { analyzeProject, buildWorm, computeTrust, fetchGithub, parseInput, parseList, replayAttack, scanPackageCode, scoreOf, sortReports } from '../src/core/index.js';
+import type { Finding, PackageReport, ProjectReport, ReplayResult, TrustReport, Verdict, WormModel } from '../src/core/index.js';
 import { TrustGraph } from './graph.js';
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector(s) as T;
@@ -32,6 +32,9 @@ let shareQuery = '';
 let replay: ReplayResult | null = null;
 let trust: TrustReport | null = null;
 let graph: TrustGraph | null = null;
+let worm: WormModel | null = null;
+let wormFrom = '';
+let wormTimers: number[] = [];
 const LABEL: Record<Verdict, string> = { danger: 'Danger', review: 'Review', safe: 'Safe', unknown: 'Error' };
 const SEV_ICON: Record<Finding['severity'], string> = { danger: '!', review: '?', info: 'i', good: '✓' };
 
@@ -171,11 +174,69 @@ function renderTrust() {
     };
   }
   graph.load(report.packages, t);
+  worm = buildWorm(report.packages);
+  wormFrom = worm.superSpreaders(1)[0]?.account || t.accounts[0]?.name || '';
+  $('#worm-from').textContent = wormFrom;
+  $('#worm-msg').textContent = '';
+}
+
+function releaseWorm() {
+  if (!worm || !graph || !wormFrom || !report) return;
+  wormTimers.forEach(clearTimeout);
+  wormTimers = [];
+  document.querySelectorAll('#accounts button').forEach((b) => b.classList.remove('active'));
+  $('#phish-msg').textContent = '';
+  graph.onTick = () => {};
+  const p = Number($<HTMLInputElement>('#worm-p').value) / 100;
+  const run = worm.run(wormFrom, p);
+  const STEP = 900;
+  const delays = new Map<string, number>();
+  run.generations.forEach((g) => g.packages.forEach((pkg) => delays.set(pkg, g.gen * STEP)));
+  graph.infect(delays, new Set(run.generations[0]?.packages || []));
+  const total = new Set(report.packages.map((x) => x.name)).size;
+  let poisoned = 0;
+  const lines: string[] = [];
+  run.generations.forEach((g, i) => {
+    wormTimers.push(
+      window.setTimeout(() => {
+        poisoned += g.packages.length;
+        lines.push(
+          i === 0
+            ? `Gen 0: <b>${esc(wormFrom)}</b>'s token republishes ${g.packages.length} package${g.packages.length === 1 ? '' : 's'}.`
+            : `Gen ${g.gen}: ${g.accounts.length} more maintainer${g.accounts.length === 1 ? '' : 's'} infected, ${g.packages.length} more packages poisoned.`,
+        );
+        const done = i === run.generations.length - 1;
+        $('#worm-msg').innerHTML = `${lines.slice(-3).join('<br>')}${done ? `<br><b class="t-danger">${Math.round((100 * poisoned) / total)}% of your packages poisoned</b> (${poisoned} of ${total}) after ${run.generations.length} generation${run.generations.length === 1 ? '' : 's'}, ${run.accountsInfected} accounts compromised.` : ''}`;
+      }, i * STEP),
+    );
+  });
+}
+
+function recordHistory(repo: string) {
+  if (!report || !trust || !worm) return;
+  const top = trust.accounts[0];
+  const ss = worm.superSpreaders(1)[0];
+  fetch('./api/scans', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      repo,
+      packages: report.packages.length,
+      score: report.score,
+      danger: report.counts.danger,
+      review: report.counts.review,
+      people: trust.people,
+      topPct: top ? Math.round((100 * top.directReach.length) / Math.max(1, trust.direct)) : 0,
+      wormPct: ss ? Math.round(100 * ss.poisonedShare) : 0,
+    }),
+  }).catch(() => {});
 }
 
 function phish(i: number) {
   if (!trust || !graph) return;
   const a = trust.accounts[i];
+  wormTimers.forEach(clearTimeout);
+  $('#worm-msg').textContent = '';
   document.querySelectorAll('#accounts button').forEach((b, j) => b.classList.toggle('active', j === i));
   graph.phish(a.packages);
   const pct = Math.round((100 * a.directReach.length) / Math.max(1, trust.direct));
@@ -225,6 +286,10 @@ async function run() {
     if (shareQuery) history.replaceState(null, '', `#${shareQuery}`);
     filter = 'all';
     render();
+    if (tab === 'repo') {
+      const g = $<HTMLInputElement>('#repo').value.trim().replace(/^https?:\/\/(www\.)?github\.com\//, '').split('/').slice(0, 2).join('/').replace(/\.git$/, '');
+      recordHistory(g);
+    }
   } catch (e) {
     $('#error').textContent = (e as Error).message || String(e);
     $('#error').hidden = false;
@@ -374,6 +439,8 @@ document.querySelector('.examples')!.addEventListener('click', (e) => {
 });
 
 document.querySelectorAll<HTMLButtonElement>('[data-replay]').forEach((b) => b.addEventListener('click', () => runReplay(b.dataset.replay!)));
+$('#worm-go').addEventListener('click', releaseWorm);
+$('#worm-p').addEventListener('input', () => ($('#worm-p-out').textContent = `${$<HTMLInputElement>('#worm-p').value}%`));
 $('#accounts').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-acct]');
   if (b) phish(Number(b.dataset.acct));

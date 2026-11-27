@@ -3,5 +3,6 @@
   "framework": null,
   "installCommand": "npm ci",
   "buildCommand": "npx vite build",
-  "outputDirectory": "web/dist"
+  "outputDirectory": "web/dist",
+  "cleanUrls": true
 }

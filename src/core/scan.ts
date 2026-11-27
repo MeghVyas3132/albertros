@@ -35,10 +35,17 @@ const RULES: Rule[] = [
   },
   {
     id: 'wallet-hook',
-    title: 'Hijacks wallet or network calls',
-    why: 'Replaces window.ethereum, fetch or XMLHttpRequest, the trick used to swap crypto addresses (chalk/debug attack, Sept 2025).',
-    re: /window\.ethereum\s*\.\s*(?:request|send|sendAsync)\s*=|XMLHttpRequest\.prototype\.(?:open|send)\s*=|(?:window|globalThis|self)\.fetch\s*=\s*(?:async\s*)?(?:function|\()/,
+    title: 'Hijacks the browser wallet',
+    why: 'Replaces window.ethereum methods, the trick used to swap crypto addresses (chalk/debug attack, Sept 2025).',
+    re: /window\.ethereum\s*\.\s*(?:request|send|sendAsync)\s*=/,
     kind: 'strong',
+  },
+  {
+    id: 'net-hook',
+    title: 'Replaces fetch or XMLHttpRequest',
+    why: 'Overrides the browser network functions. Polyfills do this legitimately; malware does it to read or rewrite traffic.',
+    re: /XMLHttpRequest\.prototype\.(?:open|send)\s*=|(?:window|globalThis|self)\.fetch\s*=\s*(?:async\s*)?(?:function|\()/,
+    kind: 'net',
   },
   {
     id: 'secrets',
@@ -94,7 +101,7 @@ export interface ScanResult {
  * installFiles are the files run by install scripts: anything found there is worse.
  */
 export function scanFiles(files: PkgFile[], installFiles: string[] = []): ScanResult {
-  const hits = new Map<string, { rule: Rule; evidence: string[]; inInstall: boolean }>();
+  const hits = new Map<string, { rule: Rule; evidence: string[]; inInstall: boolean; nearNet: boolean }>();
   let net = false;
   let netInInstall = false;
   let execInInstall: string | null = null;
@@ -108,6 +115,13 @@ export function scanFiles(files: PkgFile[], installFiles: string[] = []): ScanRe
     scanned++;
     const t = f.text;
     const inInstall = install.has(f.path);
+    const netLines: number[] = [];
+    {
+      const g = new RegExp(NET_RE.source, 'g');
+      let m: RegExpExecArray | null;
+      let n = 0;
+      while ((m = g.exec(t)) && n++ < 200) netLines.push(t.slice(0, m.index).split('\n').length);
+    }
     if (NET_RE.test(t)) {
       net = true;
       if (inInstall) netInInstall = true;
@@ -125,9 +139,12 @@ export function scanFiles(files: PkgFile[], installFiles: string[] = []): ScanRe
         if (rule.id === 'raw-ip' && PRIVATE_IP.test(m[1])) continue;
         n++;
         const { line, snippet } = lineOf(t, m.index);
-        const h = hits.get(rule.id) || { rule, evidence: [], inInstall: false };
+        const h = hits.get(rule.id) || { rule, evidence: [], inInstall: false, nearNet: false };
         if (h.evidence.length < 4) h.evidence.push(`${f.path}:${line}  ${snippet}`);
         h.inInstall ||= inInstall;
+        // Minified bundles put everything on a few huge lines; only count as "near" when the line itself is short.
+        const lineLen = snippet.length;
+        h.nearNet ||= netLines.some((nl) => Math.abs(nl - line) <= 30) && (lineLen < 400 || rule.kind !== 'secret');
         hits.set(rule.id, h);
         if (m.index === g.lastIndex) g.lastIndex++;
       }
@@ -139,11 +156,12 @@ export function scanFiles(files: PkgFile[], installFiles: string[] = []): ScanRe
   const secretish = has('secrets') || has('env-dump');
   const netish = net || has('raw-ip') || has('drop-service');
 
-  for (const { rule, evidence, inInstall } of hits.values()) {
+  for (const { rule, evidence, inInstall, nearNet } of hits.values()) {
     let severity: Finding['severity'] = 'review';
     if (rule.kind === 'strong') severity = 'danger';
-    if (rule.kind === 'secret' && (netish || inInstall)) severity = 'danger';
-    if (rule.kind === 'net' && (secretish || inInstall)) severity = 'danger';
+    // Secrets are dangerous when read and sent together (same file, within ~30 lines), or during install.
+    if (rule.kind === 'secret' && (nearNet || inInstall || has('drop-service'))) severity = 'danger';
+    if (rule.kind === 'net' && (inInstall || (secretish && [...hits.values()].some((h) => h.rule.kind === 'secret' && h.nearNet)))) severity = 'danger';
     findings.push({
       code: `code-${rule.id}`,
       severity,

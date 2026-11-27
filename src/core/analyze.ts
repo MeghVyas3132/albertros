@@ -262,7 +262,8 @@ async function resolveOne(d: DepInput, now: number): Promise<Work> {
       });
     }
     const fresh = r.findings.some((f) => f.code === 'fresh');
-    if (signals.length >= 2 || (signals.length >= 1 && fresh && signals[0] !== 'size jump')) {
+    const strong = signals.filter((x) => x === 'install script added' || x === 'provenance dropped').length;
+    if ((strong >= 1 && signals.length >= 2) || (fresh && strong >= 1) || (fresh && signals.length >= 2)) {
       r.findings.push({
         code: 'hijack-pattern',
         severity: 'danger',
@@ -476,8 +477,21 @@ export async function analyzeProject(source: string, deps: DepInput[], opts: Ana
 
   for (const r of reports) {
     // Binary installers like esbuild or sharp legitimately download during install.
-    if ((r.meta.weeklyDownloads ?? 0) > 1_000_000) {
+    const popular = (r.meta.weeklyDownloads ?? 0) > 1_000_000;
+    if (popular) {
       for (const f of r.findings) if (['code-install-exec-net', 'install-script', 'source-install-not-in-git'].includes(f.code)) f.severity = 'info';
+    }
+    // Pattern matches in code that a million people a week have run for two weeks are almost always legitimate
+    // (build tools mention .npmrc, polyfills patch XMLHttpRequest). Fresh releases keep full severity:
+    // that is the window real attacks use.
+    const ageDays = r.meta.publishedAt ? (now - Date.parse(r.meta.publishedAt)) / DAY : Infinity;
+    if (popular && ageDays > 14) {
+      for (const f of r.findings) {
+        if (f.code.startsWith('code-') && f.severity !== 'good' && f.severity !== 'info') {
+          f.severity = 'info';
+          f.detail += ' Downgraded: this release has been out for weeks in a package with over a million weekly downloads.';
+        }
+      }
     }
     finalize(r);
   }

@@ -152,6 +152,26 @@ export class TrustGraph {
     }
   }
 
+  /** Infect packages at given delays (ms); your app turns red when the first direct dependency does. */
+  infect(delays: Map<string, number>, owned: Set<string>) {
+    const now = performance.now();
+    for (const n of this.nodes) {
+      n.infectedAt = 0;
+      n.owned = false;
+    }
+    let firstDirect = Infinity;
+    for (const [id, d] of delays) {
+      const n = this.byId.get(id);
+      if (!n) continue;
+      n.infectedAt = now + d + 1;
+      n.owned = owned.has(id);
+      if (n.p?.direct) firstDirect = Math.min(firstDirect, d);
+    }
+    const root = this.byId.get('');
+    if (root && firstDirect < Infinity) root.infectedAt = now + firstDirect + 250;
+    this.phishStart = now;
+  }
+
   clearPhish() {
     for (const n of this.nodes) {
       n.infectedAt = 0;

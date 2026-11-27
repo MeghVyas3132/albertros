@@ -211,7 +211,6 @@ export async function fetchGithub(input: string, opts: { includeDev?: boolean } 
   };
   const source = `github.com/${g.owner}/${g.repo}${g.dir ? '/' + g.dir : ''}`;
   const [pkg, lock, pnpm, yarn] = await Promise.all([get('package.json'), get('package-lock.json'), get('pnpm-lock.yaml'), get('yarn.lock')]);
-  if (!pkg && !lock && !pnpm && !yarn) throw new Error(`No package.json found in ${g.owner}/${g.repo}${g.dir ? '/' + g.dir : ''}. Is the repo public?`);
 
   let root: any = {};
   try {
@@ -251,15 +250,18 @@ export async function fetchGithub(input: string, opts: { includeDev?: boolean } 
       /* no deps in this one */
     }
   }
-  if (!deps.length) throw new Error(`${g.owner}/${g.repo} has no npm dependencies to check.`);
+  if (!deps.length) {
+    if (!pkg && manifests.length <= 1) throw new Error(`No package.json found in ${g.owner}/${g.repo}${g.dir ? '/' + g.dir : ''}. Is it a public JavaScript project?`);
+    throw new Error(`${g.owner}/${g.repo} has no npm dependencies to check.`);
+  }
   return { kind: 'package.json', name: root.name, deps, source: `${source} (${manifests.length > 1 ? `${manifests.length} package.json files` : 'package.json'})` };
 }
 
 /** Root package.json plus every workspace package.json (found with one GitHub tree call). */
 async function workspaceManifests(g: { owner: string; repo: string; ref: string; dir: string }, root: any): Promise<any[]> {
-  const out = [root];
+  const out = Object.keys(root).length ? [root] : [];
   const hasDeps = (m: any) => Object.keys({ ...m.dependencies, ...m.devDependencies, ...m.optionalDependencies }).length > 0;
-  const isMono = !!root.workspaces || !hasDeps(root);
+  const isMono = !!root.workspaces || !hasDeps(root || {});
   if (!isMono) return out;
   try {
     const res = await fetch(`https://api.github.com/repos/${g.owner}/${g.repo}/git/trees/${g.ref}?recursive=1`);

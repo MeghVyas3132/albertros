@@ -1,0 +1,99 @@
+{
+  "event": "CODEFESTTHON 2026",
+  "scannedAt": "2026-11-27T16:34:22.049Z",
+  "submissions": 24,
+  "withRepo": 18,
+  "javascript": 13,
+  "packages": 2729,
+  "strangersTotal": 2229,
+  "strangersMedian": 166,
+  "strangersMax": 343,
+  "topReachMedian": 33,
+  "topReachMax": 100,
+  "wormMedian": 44,
+  "wormMax": 100,
+  "projectsWithDanger": 0,
+  "projectsWithInstallScripts": 8,
+  "projectsWithKnownVulns": 6,
+  "vulnerablePackages": 16,
+  "distribution": [
+    {
+      "people": 343,
+      "topPct": 22,
+      "packages": 300,
+      "worm": 43
+    },
+    {
+      "people": 322,
+      "topPct": 45,
+      "packages": 213,
+      "worm": 61
+    },
+    {
+      "people": 317,
+      "topPct": 43,
+      "packages": 300,
+      "worm": 47
+    },
+    {
+      "people": 238,
+      "topPct": 32,
+      "packages": 251,
+      "worm": 41
+    },
+    {
+      "people": 189,
+      "topPct": 38,
+      "packages": 300,
+      "worm": 53
+    },
+    {
+      "people": 185,
+      "topPct": 33,
+      "packages": 257,
+      "worm": 48
+    },
+    {
+      "people": 166,
+      "topPct": 29,
+      "packages": 300,
+      "worm": 42
+    },
+    {
+      "people": 153,
+      "topPct": 20,
+      "packages": 300,
+      "worm": 41
+    },
+    {
+      "people": 142,
+      "topPct": 26,
+      "packages": 300,
+      "worm": 42
+    },
+    {
+      "people": 130,
+      "topPct": 25,
+      "packages": 133,
+      "worm": 44
+    },
+    {
+      "people": 29,
+      "topPct": 50,
+      "packages": 67,
+      "worm": 43
+    },
+    {
+      "people": 8,
+      "topPct": 67,
+      "packages": 7,
+      "worm": 50
+    },
+    {
+      "people": 7,
+      "topPct": 100,
+      "packages": 1,
+      "worm": 100
+    }
+  ]
+}

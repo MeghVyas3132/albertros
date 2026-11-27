@@ -4,11 +4,19 @@
   "description": "Know which npm dependency will hurt you, before npm install does.",
   "type": "module",
   "license": "MIT",
-  "bin": { "albertros": "dist/cli.js" },
+  "bin": {
+    "albertros": "dist/cli.js"
+  },
   "main": "dist/core/index.js",
   "types": "dist/core/index.d.ts",
-  "files": ["dist", "README.md", "LICENSE"],
-  "engines": { "node": ">=20" },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build:cli": "tsc -p tsconfig.json",
     "build:web": "vite build",
@@ -17,8 +25,27 @@
     "test": "tsc -p tsconfig.json && node --test test/*.test.mjs",
     "prepare": "tsc -p tsconfig.json"
   },
-  "keywords": ["npm", "supply-chain", "security", "malware", "typosquat", "cli"],
-  "repository": { "type": "git", "url": "git+https://github.com/MeghVyas3132/albertros.git" },
-  "dependencies": { "semver": "^7.7.2" },
-  "devDependencies": { "@types/node": "^22.10.0", "@types/semver": "^7.7.0", "typescript": "^5.9.3", "vite": "^7.2.4" }
+  "keywords": [
+    "npm",
+    "supply-chain",
+    "security",
+    "malware",
+    "typosquat",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MeghVyas3132/albertros.git"
+  },
+  "dependencies": {
+    "semver": "^7.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/semver": "^7.7.0",
+    "@vercel/blob": "^2.9.0",
+    "@vercel/node": "^33.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4"
+  }
 }
