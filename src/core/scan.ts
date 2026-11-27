@@ -51,7 +51,7 @@ const RULES: Rule[] = [
     id: 'env-dump',
     title: 'Collects all environment variables',
     why: 'Serialises the whole environment, which usually contains CI tokens and API keys.',
-    re: /JSON\.stringify\(\s*process\.env\s*\)|Object\.(?:keys|entries|values)\(\s*process\.env\s*\)|\{\s*\.\.\.process\.env\s*\}\s*\)/,
+    re: /JSON\.stringify\(\s*process\.env\s*[,)]|Buffer\.from\(\s*JSON\.stringify\(\s*process\.env|(?:body|data|payload)\s*[:=]\s*process\.env\b/,
     kind: 'secret',
   },
   {

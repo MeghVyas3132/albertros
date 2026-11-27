@@ -29,6 +29,7 @@ export interface PackageMeta {
   provenance?: boolean;
   signature?: 'valid' | 'invalid' | 'missing' | 'unknown-key';
   integrity?: 'verified' | 'mismatch';
+  source?: { status: string; repo?: string; commit?: string; compared: number; matched: number; modified: number; notInGit: number };
 }
 
 export interface PackageReport {

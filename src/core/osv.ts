@@ -8,7 +8,7 @@ export interface Advisory {
   url: string;
 }
 
-const MALICIOUS_RE = /malicious|malware|embedded (malicious )?code|compromised|protestware|backdoor|hijack|wipe|sabotage|infinite loop.*(colors|faker)/i;
+const MALICIOUS_RE = /malicious (code|package|version|software)|\bis malware\b|contains malware|embedded malicious|protestware|backdoor(ed)? (version|package|code)|compromised (version|package|release|maintainer|account)|infinite loop.*(colors|faker)/i;
 
 const details = new Map<string, Promise<Advisory>>();
 function getAdvisory(id: string): Promise<Advisory> {
@@ -19,7 +19,8 @@ function getAdvisory(id: string): Promise<Advisory> {
       .then((v) => {
         const summary: string = (v?.summary || v?.details || id).toString().split('\n')[0].slice(0, 200);
         const text = `${v?.summary || ''} ${String(v?.details || '').slice(0, 600)}`;
-        const malicious = id.startsWith('MAL-') || MALICIOUS_RE.test(text) || (v?.aliases || []).some((a: string) => a.startsWith('MAL-'));
+        const cwes: string[] = v?.database_specific?.cwe_ids || [];
+        const malicious = id.startsWith('MAL-') || cwes.includes('CWE-506') || MALICIOUS_RE.test(text) || (v?.aliases || []).some((a: string) => a.startsWith('MAL-'));
         const severity: string | undefined = v?.database_specific?.severity;
         return {
           id,

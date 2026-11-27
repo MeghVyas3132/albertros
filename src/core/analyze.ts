@@ -5,6 +5,7 @@ import { installEntryFiles, scanFiles, scanInstallScript } from './scan.js';
 import { readTarball } from './tarball.js';
 import { typosquatOf } from './typosquat.js';
 import { verifyRegistrySignature } from './verify.js';
+import { verifyAgainstSource } from './source.js';
 import type { AnalyzeOptions, DepInput, Finding, PackageReport, ProjectReport, Verdict } from './types.js';
 
 interface Work extends PackageReport {
@@ -298,13 +299,22 @@ export async function scanPackageCode(r: PackageReport & { manifest?: any }): Pr
         evidence: [m.dist.integrity],
       });
     } else if (files.integrityOk) r.meta.integrity = 'verified';
-    const res = scanFiles(files, installEntryFiles(m.scripts));
+    const installFiles = installEntryFiles(m.scripts);
+    const res = scanFiles(files, installFiles);
     r.findings.push(...res.findings);
+    try {
+      const src = await verifyAgainstSource(m, files, installFiles);
+      r.findings.push(...src.findings);
+      const c = src.check;
+      r.meta.source = { status: c.status, repo: c.repo, commit: c.commit, compared: c.compared, matched: c.matched, modified: c.modified.length, notInGit: c.notInGit.length };
+    } catch (e) {
+      r.findings.push({ code: 'source-failed', severity: 'info', title: 'Could not compare with the source repo', detail: String((e as Error).message || e) });
+    }
     r.findings.push({
       code: 'scanned',
       severity: res.findings.length ? 'info' : 'good',
       title: res.findings.length ? `Scanned ${res.filesScanned} files` : `Code scan clean (${res.filesScanned} files)`,
-      detail: 'Checked the published tarball for the patterns used by real npm attacks: install-time downloads, hidden eval, token theft, wallet hijacking, obfuscation.',
+      detail: 'Checked the published tarball (hash verified) for the patterns used by real npm attacks: install-time downloads, hidden eval, token theft, wallet hijacking, obfuscation.',
     });
     r.scanned = true;
   } catch (e) {
@@ -433,7 +443,7 @@ export async function analyzeProject(source: string, deps: DepInput[], opts: Ana
   for (const r of reports) {
     // Binary installers like esbuild or sharp legitimately download during install.
     if ((r.meta.weeklyDownloads ?? 0) > 1_000_000) {
-      for (const f of r.findings) if (f.code === 'code-install-exec-net' || f.code === 'install-script') f.severity = 'info';
+      for (const f of r.findings) if (['code-install-exec-net', 'install-script', 'source-install-not-in-git'].includes(f.code)) f.severity = 'info';
     }
     finalize(r);
   }
