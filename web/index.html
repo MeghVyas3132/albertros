@@ -51,47 +51,68 @@
           <!-- HIGHLIGHTED FORM PANEL -->
           <section class="hero-right" aria-label="What to check">
             <h2 class="panel-headline">Check your repo<br>before it becomes<br>tomorrow's breach.</h2>
-            <p class="panel-label">Pick how you want to scan_</p>
 
-            <div class="tabs" role="tablist">
-              <button role="tab" data-tab="repo" aria-selected="true">GitHub repo</button>
-              <button role="tab" data-tab="paste" aria-selected="false">Paste package list</button>
-              <button role="tab" data-tab="list" aria-selected="false">Package names</button>
+            <!-- FORM STATE -->
+            <div id="panel-form">
+              <p class="panel-label">Pick how you want to scan_</p>
+
+              <div class="tabs" role="tablist">
+                <button role="tab" data-tab="repo" aria-selected="true">GitHub repo</button>
+                <button role="tab" data-tab="paste" aria-selected="false">Paste package list</button>
+                <button role="tab" data-tab="list" aria-selected="false">Package names</button>
+              </div>
+
+              <form id="form" autocomplete="off">
+                <div class="pane" data-pane="repo">
+                  <div class="input-row">
+                    <span class="cursor">&gt;</span>
+                    <input id="repo" type="text" placeholder="owner/repo or github url" spellcheck="false" />
+                  </div>
+                </div>
+                <div class="pane" data-pane="paste" hidden>
+                  <textarea id="paste" rows="7" placeholder='{ "dependencies": { "express": "^4.21.2" } }' spellcheck="false"></textarea>
+                </div>
+                <div class="pane" data-pane="list" hidden>
+                  <div class="input-row">
+                    <span class="cursor">&gt;</span>
+                    <input id="list" type="text" placeholder="chalk@5.6.1 lodash express@4" spellcheck="false" />
+                  </div>
+                </div>
+                <div class="form-controls">
+                  <label class="check"><input type="checkbox" id="dev" checked /> Include dev packages</label>
+                  <label class="check"><input type="checkbox" id="deep" /> Deep scan (slower)</label>
+                  <button type="submit" class="go" id="go">Execute</button>
+                </div>
+              </form>
+
+              <div class="examples">
+                <span>Try_</span>
+                <button data-replay="chalk" class="hot">Replay chalk hijack</button>
+                <button data-replay="shai-hulud" class="hot">Replay Shai-Hulud worm</button>
+                <button data-example="express">expressjs/express</button>
+                <button data-example="risky">Risky project</button>
+                <button data-example="hijack">Hijacked versions</button>
+              </div>
+
+              <p class="privacy">Everything runs in your browser — nothing is sent to our servers. Public GitHub repos you check are listed on <a href="./history">Recently scanned</a> with summary numbers only, never your code.</p>
             </div>
 
-            <form id="form" autocomplete="off">
-              <div class="pane" data-pane="repo">
-                <div class="input-row">
-                  <span class="cursor">&gt;</span>
-                  <input id="repo" type="text" placeholder="owner/repo or github url" spellcheck="false" />
+            <!-- RESULT STATE (shown after scan) -->
+            <div id="panel-result" hidden>
+              <p class="panel-label">Scan complete_</p>
+              <div class="panel-score-wrap">
+                <div class="score panel-score" id="panel-score"></div>
+                <div class="panel-verdict">
+                  <p class="panel-source" id="panel-source"></p>
+                  <h3 id="panel-headline-text"></h3>
+                  <div class="panel-counts" id="panel-counts"></div>
                 </div>
               </div>
-              <div class="pane" data-pane="paste" hidden>
-                <textarea id="paste" rows="7" placeholder='{ "dependencies": { "express": "^4.21.2" } }' spellcheck="false"></textarea>
+              <div class="panel-actions">
+                <button id="panel-recheck" class="panel-btn-outline">Scan another</button>
+                <a href="#results" class="panel-btn-fill">View full report ↓</a>
               </div>
-              <div class="pane" data-pane="list" hidden>
-                <div class="input-row">
-                  <span class="cursor">&gt;</span>
-                  <input id="list" type="text" placeholder="chalk@5.6.1 lodash express@4" spellcheck="false" />
-                </div>
-              </div>
-              <div class="form-controls">
-                <label class="check"><input type="checkbox" id="dev" checked /> Include dev packages</label>
-                <label class="check"><input type="checkbox" id="deep" /> Deep scan (slower)</label>
-                <button type="submit" class="go" id="go">Execute</button>
-              </div>
-            </form>
-
-            <div class="examples">
-              <span>Try_</span>
-              <button data-replay="chalk" class="hot">Replay chalk hijack</button>
-              <button data-replay="shai-hulud" class="hot">Replay Shai-Hulud worm</button>
-              <button data-example="express">expressjs/express</button>
-              <button data-example="risky">Risky project</button>
-              <button data-example="hijack">Hijacked versions</button>
             </div>
-
-            <p class="privacy">Everything runs in your browser — nothing is sent to our servers. Public GitHub repos you check are listed on <a href="./history">Recently scanned</a> with summary numbers only, never your code.</p>
           </section>
 
         </div>

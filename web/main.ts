@@ -296,7 +296,7 @@ async function run() {
   } finally {
     $('#progress').hidden = true;
     go.disabled = false;
-    go.textContent = 'Check';
+    go.textContent = 'Execute';
   }
 }
 
@@ -315,12 +315,35 @@ function scoreRing(score: number) {
   return `<svg viewBox="0 0 104 104" aria-hidden="true"><circle class="track" cx="52" cy="52" r="${r}"/><circle class="val" cx="52" cy="52" r="${r}" stroke="${color}" stroke-dasharray="${c}" stroke-dashoffset="${c}" data-target="${c * (1 - score / 100)}"/></svg><b style="color:${color}">${score}</b>`;
 }
 
+function showPanelResult(r: ProjectReport, score: number, counts: ReturnType<typeof scoreOf>['counts']) {
+  const pillsHtml = (['danger', 'review', 'safe', 'unknown'] as Verdict[])
+    .filter((v) => v !== 'unknown' || counts.unknown)
+    .map((v) => `<span class="pill p-${v}">${counts[v]} ${LABEL[v]}</span>`)
+    .join('');
+  $('#panel-score').innerHTML = scoreRing(score);
+  $('#panel-score').hidden = !!replay;
+  ($('#panel-source') as HTMLElement).textContent = `${r.packages.length} packages · ${((Date.parse(r.finishedAt) - Date.parse(r.startedAt)) / 1000).toFixed(1)}s`;
+  ($('#panel-headline-text') as HTMLElement).textContent = headline(r);
+  ($('#panel-counts') as HTMLElement).innerHTML = pillsHtml;
+  ($('#panel-form') as HTMLElement).hidden = true;
+  ($('#panel-result') as HTMLElement).hidden = false;
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      const v = document.querySelector<SVGCircleElement>('#panel-score .val');
+      if (v) v.style.strokeDashoffset = v.dataset.target!;
+    }),
+  );
+}
+
 function render() {
   if (!report) return;
   const r = report;
   const { score, counts } = scoreOf(r.packages);
   r.score = score;
   r.counts = counts;
+  // Populate inline panel result
+  showPanelResult(r, score, counts);
+  // Populate full results section below
   $('#results').hidden = false;
   $('#score').innerHTML = scoreRing(score);
   $('#score').hidden = !!replay;
@@ -344,7 +367,6 @@ function render() {
     .map((f) => `<button data-filter="${f}" aria-pressed="${filter === f}">${f === 'all' ? `All ${r.packages.length}` : `${LABEL[f]} ${counts[f]}`}</button>`)
     .join('');
   renderList();
-  $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function topReason(p: PackageReport) {
@@ -416,6 +438,18 @@ function renderList() {
 }
 
 document.querySelectorAll<HTMLButtonElement>('.tabs button').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab as typeof tab)));
+
+($('#panel-recheck') as HTMLElement).addEventListener('click', () => {
+  report = null;
+  replay = null;
+  ($('#panel-result') as HTMLElement).hidden = true;
+  ($('#panel-form') as HTMLElement).hidden = false;
+  ($('#results') as HTMLElement).hidden = true;
+  ($('#error') as HTMLElement).hidden = true;
+  history.replaceState(null, '', location.pathname);
+  $<HTMLInputElement>('#repo').value = '';
+  $<HTMLInputElement>('#list').value = '';
+});
 $('#form').addEventListener('submit', (e) => {
   e.preventDefault();
   run();
